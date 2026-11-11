@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,6 +44,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,12 +69,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -312,7 +316,10 @@ fun DashboardScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
@@ -328,14 +335,16 @@ fun DashboardScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
                                 Text(
                                     text = "TELEGRAM BOT",
                                     style = MaterialTheme.typography.labelLarge.copy(
                                         fontFamily = FontFamily.Monospace,
                                         fontWeight = FontWeight.Bold
                                     ),
-                                    color = colors.textPrimary
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = when {
@@ -344,10 +353,14 @@ fun DashboardScreen(
                                         else -> "@${telegramConfig.botUsername ?: "bot"} • Ready & paired"
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (telegramConfig.authorizedChatId != null) colors.success else colors.warning
+                                    color = if (telegramConfig.authorizedChatId != null) colors.success else colors.warning,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -370,7 +383,10 @@ fun DashboardScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.SimCard,
                                     contentDescription = null,
@@ -384,9 +400,12 @@ fun DashboardScreen(
                                         fontFamily = FontFamily.Monospace,
                                         fontWeight = FontWeight.Bold
                                     ),
-                                    color = colors.textPrimary
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "CHANGE",
                                 style = MaterialTheme.typography.labelSmall.copy(
@@ -407,13 +426,18 @@ fun DashboardScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "SIM 1: ${sim1Info?.carrierName ?: "Primary"}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = colors.textSecondary
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (sim1Active) "ACTIVE" else "OFF",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -425,13 +449,18 @@ fun DashboardScreen(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = "SIM 2: ${sim2Info?.carrierName ?: "Secondary"}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = colors.textSecondary
+                                color = colors.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (sim2Active) "ACTIVE" else "OFF",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
@@ -443,14 +472,20 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 5. STAY ALIVE & AUTO START CONTROLS
+                // 5. STAY ALIVE & AUTO START CONTROLS (Compact Cards)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     // Stay Alive Card
-                    GlowCard(modifier = Modifier.weight(1f)) {
-                        Column {
+                    GlowCard(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.Center
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -460,10 +495,15 @@ fun DashboardScreen(
                                     text = "STAY ALIVE",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.5.sp
                                     ),
-                                    color = colors.textPrimary
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
+                                Spacer(modifier = Modifier.width(2.dp))
                                 Switch(
                                     checked = prefs.isStayAliveEnabled,
                                     onCheckedChange = { app.preferencesManager.setStayAliveEnabled(it) },
@@ -473,20 +513,31 @@ fun DashboardScreen(
                                         uncheckedThumbColor = colors.textMuted,
                                         uncheckedTrackColor = colors.surfaceElevated
                                     ),
-                                    modifier = Modifier.testTag("stay_alive_switch")
+                                    modifier = Modifier
+                                        .scale(0.82f)
+                                        .testTag("stay_alive_switch")
                                 )
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Keeps VANTA awake in the background so Android doesn't put it to sleep when you lock the phone.",
+                                text = "Background protection",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = colors.textMuted
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
                     // Auto Start Card
-                    GlowCard(modifier = Modifier.weight(1f)) {
-                        Column {
+                    GlowCard(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.Center
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -496,10 +547,15 @@ fun DashboardScreen(
                                     text = "AUTO START",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.5.sp
                                     ),
-                                    color = colors.textPrimary
+                                    color = colors.textPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
                                 )
+                                Spacer(modifier = Modifier.width(2.dp))
                                 Switch(
                                     checked = prefs.isAutoStartEnabled,
                                     onCheckedChange = { app.preferencesManager.setAutoStartEnabled(it) },
@@ -509,13 +565,18 @@ fun DashboardScreen(
                                         uncheckedThumbColor = colors.textMuted,
                                         uncheckedTrackColor = colors.surfaceElevated
                                     ),
-                                    modifier = Modifier.testTag("auto_start_switch")
+                                    modifier = Modifier
+                                        .scale(0.82f)
+                                        .testTag("auto_start_switch")
                                 )
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Automatically restarts forwarding if your phone reboots while you're away.",
+                                text = "Start on boot",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = colors.textMuted
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -571,8 +632,12 @@ private fun StatusPanel(
     val colors = LocalVantaColors.current
     val timeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
-    GlowCard(modifier = Modifier.fillMaxWidth()) {
+    GlowCard(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp)
+    ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // A. Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -580,10 +645,11 @@ private fun StatusPanel(
             ) {
                 Text(
                     text = "LIVE STATUS",
-                    style = MaterialTheme.typography.labelLarge.copy(
+                    style = MaterialTheme.typography.labelMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.sp,
+                        fontSize = 12.sp
                     ),
                     color = colors.primaryBright
                 )
@@ -591,7 +657,8 @@ private fun StatusPanel(
                     text = "LISTENING: ${simSelectionMode.label.uppercase()}",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 10.sp
                     ),
                     color = colors.textMuted
                 )
@@ -599,27 +666,32 @@ private fun StatusPanel(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Grid of telemetry indicators
+            // B. Four status indicators in a clean, consistently aligned row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 TelemetryItem(
+                    modifier = Modifier.weight(1f),
                     label = "FORWARDING",
                     value = if (isForwardingActive && isServiceRunning) "ACTIVE" else "OFF",
                     isActive = isForwardingActive && isServiceRunning
                 )
                 TelemetryItem(
+                    modifier = Modifier.weight(1f),
                     label = "SERVICE",
                     value = if (isServiceRunning) "ACTIVE" else "OFF",
                     isActive = isServiceRunning
                 )
                 TelemetryItem(
+                    modifier = Modifier.weight(1f),
                     label = "TELEGRAM",
                     value = if (isTelegramConnected) "ONLINE" else "OFFLINE",
                     isActive = isTelegramConnected
                 )
                 TelemetryItem(
+                    modifier = Modifier.weight(1f),
                     label = "INTERNET",
                     value = if (isInternetAvailable) "ONLINE" else "OFFLINE",
                     isActive = isInternetAvailable
@@ -628,45 +700,66 @@ private fun StatusPanel(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // C. Subtle divider between the indicators and bottom statistics
+            HorizontalDivider(
+                color = colors.border.copy(alpha = 0.5f),
+                thickness = 1.dp
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Bottom statistics
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = "LAST TEXT SENT",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Medium
                         ),
                         color = colors.textMuted
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = if (lastDelivery > 0) timeFormat.format(Date(lastDelivery)) else "None yet",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         ),
-                        color = colors.textPrimary
+                        color = colors.textPrimary,
+                        maxLines = 1
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
                     Text(
-                        text = "IN LINE / SENT",
+                        text = "FORWARDED SMS",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Medium
                         ),
                         color = colors.textMuted
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = if (pendingCount == 0) "$totalDelivered texts sent" else "$pendingCount waiting • $totalDelivered sent",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         ),
-                        color = if (pendingCount > 0) colors.warning else colors.success
+                        color = if (pendingCount > 0) colors.warning else colors.success,
+                        maxLines = 1
                     )
                 }
             }
@@ -678,20 +771,29 @@ private fun StatusPanel(
 private fun TelemetryItem(
     label: String,
     value: String,
-    isActive: Boolean
+    isActive: Boolean,
+    modifier: Modifier = Modifier
 ) {
     val colors = LocalVantaColors.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
             StatusDot(isActive = isActive, size = 6.dp)
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.5.sp
                 ),
-                color = if (isActive) colors.success else colors.textMuted
+                color = if (isActive) colors.success else colors.textMuted,
+                maxLines = 1
             )
         }
         Spacer(modifier = Modifier.height(2.dp))
@@ -699,9 +801,11 @@ private fun TelemetryItem(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontFamily = FontFamily.Monospace,
-                fontSize = 9.sp
+                fontSize = 8.5.sp,
+                fontWeight = FontWeight.Medium
             ),
-            color = colors.textMuted
+            color = colors.textMuted,
+            maxLines = 1
         )
     }
 }

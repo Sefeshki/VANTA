@@ -18,6 +18,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -60,6 +61,7 @@ import com.example.ui.theme.LocalVantaColors
 fun GlowCard(
     modifier: Modifier = Modifier,
     isHighlighted: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(18.dp),
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -94,7 +96,7 @@ fun GlowCard(
                         )
                     )
                 )
-                .padding(18.dp)
+                .padding(contentPadding)
         ) {
             content()
         }
@@ -305,11 +307,6 @@ fun CircularGithubButton(
                 fontWeight = FontWeight.SemiBold
             ),
             color = colors.primaryBright
-        )
-        Text(
-            text = "github.com/Sefeshki",
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.textMuted
         )
     }
 }
