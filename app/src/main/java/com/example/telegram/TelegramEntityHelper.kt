@@ -18,8 +18,53 @@ object TelegramEntityHelper {
 
     private const val SEPARATOR = "━━━━━━━━━━━━━━━━━━━━"
 
-    // Placeholder characters for custom emoji attachment (1 or 2 UTF-16 code units)
-    private const val EMOJI_PLACEHOLDER = "⚡"
+    val ALL_CUSTOM_EMOJI_IDS = listOf(
+        ONLINE_EMOJI_ID,
+        OFFLINE_EMOJI_ID,
+        NEW_MESSAGE_EMOJI_ID,
+        CONTEXT_EMOJI_ID,
+        GITHUB_EMOJI_ID
+    )
+
+    // Fallbacks if not yet resolved via getCustomEmojiStickers
+    private val DEFAULT_EMOJI_FALLBACKS = mapOf(
+        ONLINE_EMOJI_ID to "🟢",
+        OFFLINE_EMOJI_ID to "🔴",
+        NEW_MESSAGE_EMOJI_ID to "📩",
+        CONTEXT_EMOJI_ID to "📝",
+        GITHUB_EMOJI_ID to "🐙"
+    )
+
+    // Thread-safe cache holding resolved Unicode emoji characters for each custom emoji ID
+    private val emojiCache = java.util.concurrent.ConcurrentHashMap<String, String>(DEFAULT_EMOJI_FALLBACKS)
+
+    /**
+     * Updates the custom emoji cache with sticker mappings returned by Telegram Bot API getCustomEmojiStickers.
+     */
+    fun updateEmojiCache(map: Map<String, String>) {
+        for ((id, emoji) in map) {
+            if (emoji.isNotBlank()) {
+                emojiCache[id] = emoji
+            }
+        }
+    }
+
+    /**
+     * Resets the cache back to default fallbacks (useful for tests).
+     */
+    fun resetEmojiCacheToDefaults() {
+        emojiCache.clear()
+        emojiCache.putAll(DEFAULT_EMOJI_FALLBACKS)
+    }
+
+    /**
+     * Returns the exact Unicode emoji character to be covered by the custom_emoji entity.
+     * In Telegram Bot API, custom_emoji entities MUST wrap the exact Unicode emoji character
+     * corresponding to the sticker's emoji field, with exact UTF-16 code unit offset and length.
+     */
+    fun getPlaceholder(customEmojiId: String): String {
+        return emojiCache[customEmojiId] ?: DEFAULT_EMOJI_FALLBACKS[customEmojiId] ?: "⚡"
+    }
 
     /**
      * Formats incoming SMS according to the exact VANTA specification:
@@ -34,9 +79,10 @@ object TelegramEntityHelper {
         val sb = StringBuilder()
 
         // 1. [NEW MESSAGE CUSTOM EMOJI] New Message:
-        val newMsgEmojiOffset = utf16Length(sb.toString())
-        sb.append(EMOJI_PLACEHOLDER)
-        val newMsgEmojiLen = utf16Length(EMOJI_PLACEHOLDER)
+        val newMsgPlaceholder = getPlaceholder(NEW_MESSAGE_EMOJI_ID)
+        val newMsgEmojiOffset = sb.length
+        sb.append(newMsgPlaceholder)
+        val newMsgEmojiLen = newMsgPlaceholder.length
         entities.add(
             TelegramEntity(
                 type = "custom_emoji",
@@ -55,9 +101,10 @@ object TelegramEntityHelper {
         sb.append("By: ").append(sender).append("\n\n")
 
         // 3. [CONTEXT CUSTOM EMOJI] context:
-        val contextEmojiOffset = utf16Length(sb.toString())
-        sb.append(EMOJI_PLACEHOLDER)
-        val contextEmojiLen = utf16Length(EMOJI_PLACEHOLDER)
+        val contextPlaceholder = getPlaceholder(CONTEXT_EMOJI_ID)
+        val contextEmojiOffset = sb.length
+        sb.append(contextPlaceholder)
+        val contextEmojiLen = contextPlaceholder.length
         entities.add(
             TelegramEntity(
                 type = "custom_emoji",
@@ -94,15 +141,17 @@ object TelegramEntityHelper {
         val sb = StringBuilder()
 
         sb.append("Activation: ")
-        val actOffset = utf16Length(sb.toString())
-        sb.append(EMOJI_PLACEHOLDER)
-        val actLen = utf16Length(EMOJI_PLACEHOLDER)
+        val actId = if (isOnline) ONLINE_EMOJI_ID else OFFLINE_EMOJI_ID
+        val actPlaceholder = getPlaceholder(actId)
+        val actOffset = sb.length
+        sb.append(actPlaceholder)
+        val actLen = actPlaceholder.length
         entities.add(
             TelegramEntity(
                 type = "custom_emoji",
                 offset = actOffset,
                 length = actLen,
-                customEmojiId = if (isOnline) ONLINE_EMOJI_ID else OFFLINE_EMOJI_ID
+                customEmojiId = actId
             )
         )
         sb.append(if (isOnline) " ONLINE" else " OFFLINE").append("\n\n")
@@ -112,9 +161,10 @@ object TelegramEntityHelper {
             sb.append("No active SIM cards detected\n")
         } else {
             for (sim in sims) {
-                val simOffset = utf16Length(sb.toString())
-                sb.append(EMOJI_PLACEHOLDER)
-                val simLen = utf16Length(EMOJI_PLACEHOLDER)
+                val simPlaceholder = getPlaceholder(SIM_INDICATOR_EMOJI_ID)
+                val simOffset = sb.length
+                sb.append(simPlaceholder)
+                val simLen = simPlaceholder.length
                 entities.add(
                     TelegramEntity(
                         type = "custom_emoji",
@@ -162,12 +212,5 @@ object TelegramEntityHelper {
     /**
      * Calculates UTF-16 code units length of a string, which Telegram API requires for offsets.
      */
-    fun utf16Length(s: String): Int {
-        var count = 0
-        for (i in 0 until s.length) {
-            val codePoint = s.codePointAt(i)
-            count += Character.charCount(codePoint)
-        }
-        return s.length
-    }
+    fun utf16Length(s: String): Int = s.length
 }

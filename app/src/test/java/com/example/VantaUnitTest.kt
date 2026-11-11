@@ -12,7 +12,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class VantaUnitTest {
 
     @Test
@@ -58,18 +63,23 @@ class VantaUnitTest {
             )
         )
 
+        val onlinePlaceholder = TelegramEntityHelper.getPlaceholder(TelegramEntityHelper.ONLINE_EMOJI_ID)
         val onlineFormatted = TelegramEntityHelper.formatStatusMessage(true, sims)
-        assertTrue(onlineFormatted.text.contains("Activation: ⚡ ONLINE"))
+        assertTrue(onlineFormatted.text.contains("Activation: $onlinePlaceholder ONLINE"))
         assertTrue(onlineFormatted.text.contains("SIM1 (T-Mobile): +12025550101"))
         assertTrue(onlineFormatted.text.contains("SIM2 (Irancell): NUMBER UNAVAILABLE"))
 
         // Check online custom emoji
         val actEntity = onlineFormatted.entities.first()
         assertEquals(TelegramEntityHelper.ONLINE_EMOJI_ID, actEntity.customEmojiId)
+        assertEquals("Activation: ".length, actEntity.offset)
+        assertEquals(onlinePlaceholder.length, actEntity.length)
 
+        val offlinePlaceholder = TelegramEntityHelper.getPlaceholder(TelegramEntityHelper.OFFLINE_EMOJI_ID)
         val offlineFormatted = TelegramEntityHelper.formatStatusMessage(false, sims)
-        assertTrue(offlineFormatted.text.contains("Activation: ⚡ OFFLINE"))
+        assertTrue(offlineFormatted.text.contains("Activation: $offlinePlaceholder OFFLINE"))
         assertEquals(TelegramEntityHelper.OFFLINE_EMOJI_ID, offlineFormatted.entities.first().customEmojiId)
+        assertEquals(offlinePlaceholder.length, offlineFormatted.entities.first().length)
     }
 
     @Test
@@ -185,5 +195,111 @@ class VantaUnitTest {
 
         val decrypted = com.example.core.SecurityManager.decrypt(encrypted)
         assertEquals(sampleToken, decrypted)
+    }
+
+    @Test
+    fun testCustomEmojiDynamicUtf16OffsetsAndLengths() {
+        TelegramEntityHelper.resetEmojiCacheToDefaults()
+
+        // Test with surrogate pairs (length 2)
+        val formattedDefault = TelegramEntityHelper.formatIncomingSms("+123456789", "Test body", "SIM1")
+        val newMsgEntity = formattedDefault.entities.first { it.customEmojiId == TelegramEntityHelper.NEW_MESSAGE_EMOJI_ID }
+        val newMsgPlaceholder = TelegramEntityHelper.getPlaceholder(TelegramEntityHelper.NEW_MESSAGE_EMOJI_ID)
+        assertEquals(0, newMsgEntity.offset)
+        assertEquals(newMsgPlaceholder.length, newMsgEntity.length)
+
+        val contextEntity = formattedDefault.entities.first { it.customEmojiId == TelegramEntityHelper.CONTEXT_EMOJI_ID }
+        val contextPlaceholder = TelegramEntityHelper.getPlaceholder(TelegramEntityHelper.CONTEXT_EMOJI_ID)
+        assertEquals(contextPlaceholder.length, contextEntity.length)
+
+        // Verify entity accurately wraps the placeholder in the formatted text
+        assertEquals(
+            newMsgPlaceholder,
+            formattedDefault.text.substring(newMsgEntity.offset, newMsgEntity.offset + newMsgEntity.length)
+        )
+        assertEquals(
+            contextPlaceholder,
+            formattedDefault.text.substring(contextEntity.offset, contextEntity.offset + contextEntity.length)
+        )
+
+        // Now test updating cache with 1-char BMP emoji (e.g., ⚡ U+26A1 length 1)
+        TelegramEntityHelper.updateEmojiCache(
+            mapOf(
+                TelegramEntityHelper.NEW_MESSAGE_EMOJI_ID to "⚡",
+                TelegramEntityHelper.CONTEXT_EMOJI_ID to "⚡"
+            )
+        )
+
+        val formattedBmp = TelegramEntityHelper.formatIncomingSms("+123456789", "Test body", "SIM1")
+        val bmpNewMsgEntity = formattedBmp.entities.first { it.customEmojiId == TelegramEntityHelper.NEW_MESSAGE_EMOJI_ID }
+        assertEquals(1, bmpNewMsgEntity.length)
+        assertEquals("⚡", formattedBmp.text.substring(bmpNewMsgEntity.offset, bmpNewMsgEntity.offset + bmpNewMsgEntity.length))
+
+        // Reset back to defaults
+        TelegramEntityHelper.resetEmojiCacheToDefaults()
+    }
+
+    @Test
+    fun testParseCustomEmojiStickersResponse() {
+        val client = com.example.telegram.TelegramApiClient()
+        val mockJson = """
+            {
+                "ok": true,
+                "result": [
+                    {
+                        "custom_emoji_id": "5470088863789622816",
+                        "file_id": "CAACAgIAAxkBA...",
+                        "file_unique_id": "AQAD...",
+                        "width": 100,
+                        "height": 100,
+                        "is_animated": false,
+                        "is_video": false,
+                        "type": "custom_emoji",
+                        "emoji": "🟢"
+                    },
+                    {
+                        "custom_emoji_id": "4983325655899833037",
+                        "file_id": "CAACAgIAAxkBA...",
+                        "file_unique_id": "AQAD...",
+                        "width": 100,
+                        "height": 100,
+                        "is_animated": false,
+                        "is_video": false,
+                        "type": "custom_emoji",
+                        "emoji": "🐙"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val parsed = client.parseCustomEmojiStickersResponse(mockJson)
+        assertEquals("🟢", parsed["5470088863789622816"])
+        assertEquals("🐙", parsed["4983325655899833037"])
+        assertEquals(2, parsed.size)
+    }
+
+    @Test
+    fun testGithubButtonFormattingModes() {
+        val client = com.example.telegram.TelegramApiClient()
+
+        // Enhanced mode: must include icon_custom_emoji_id and style="primary"
+        val enhancedBtn = client.buildGithubButton(com.example.telegram.GithubButtonMode.ENHANCED)
+        assertNotNull(enhancedBtn)
+        assertEquals("GitHub", enhancedBtn?.getString("text"))
+        assertEquals("https://github.com/Sefeshki/", enhancedBtn?.getString("url"))
+        assertEquals("4983325655899833037", enhancedBtn?.getString("icon_custom_emoji_id"))
+        assertEquals("primary", enhancedBtn?.getString("style"))
+
+        // Standard mode: must only include text and url, without icon_custom_emoji_id or style
+        val standardBtn = client.buildGithubButton(com.example.telegram.GithubButtonMode.STANDARD)
+        assertNotNull(standardBtn)
+        assertEquals("GitHub", standardBtn?.getString("text"))
+        assertEquals("https://github.com/Sefeshki/", standardBtn?.getString("url"))
+        assertFalse(standardBtn?.has("icon_custom_emoji_id") == true)
+        assertFalse(standardBtn?.has("style") == true)
+
+        // None mode: must return null
+        val noneBtn = client.buildGithubButton(com.example.telegram.GithubButtonMode.NONE)
+        org.junit.Assert.assertNull(noneBtn)
     }
 }

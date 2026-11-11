@@ -55,6 +55,7 @@ class TelegramBotManager(
                 "Bot verified: @${user.username ?: user.firstName} (ID: ${user.id})",
                 LogLevel.SUCCESS
             )
+            refreshCustomEmojis(cleanToken)
             startPolling()
         }.onFailure { err ->
             _isConnected.value = false
@@ -67,6 +68,26 @@ class TelegramBotManager(
         result
     }
 
+    private fun refreshCustomEmojis(token: String) {
+        scope.launch {
+            try {
+                val res = apiClient.getCustomEmojiStickers(token, TelegramEntityHelper.ALL_CUSTOM_EMOJI_IDS)
+                res.onSuccess { emojiMap ->
+                    if (emojiMap.isNotEmpty()) {
+                        TelegramEntityHelper.updateEmojiCache(emojiMap)
+                        EventLogger.log(
+                            LogCategory.TELEGRAM,
+                            "Custom emoji stickers updated (${emojiMap.size} resolved)",
+                            LogLevel.INFO
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                // Non-blocking fallback
+            }
+        }
+    }
+
     fun checkConnection() {
         val token = preferencesManager.getDecryptedBotToken()
         if (token.isEmpty()) {
@@ -76,8 +97,11 @@ class TelegramBotManager(
         scope.launch {
             val res = apiClient.getMe(token)
             _isConnected.value = res.isSuccess
-            if (res.isSuccess && !_isPollingActive.value) {
-                startPolling()
+            if (res.isSuccess) {
+                refreshCustomEmojis(token)
+                if (!_isPollingActive.value) {
+                    startPolling()
+                }
             }
         }
     }
@@ -119,6 +143,8 @@ class TelegramBotManager(
     fun startPolling() {
         val token = preferencesManager.getDecryptedBotToken()
         if (token.isEmpty()) return
+
+        refreshCustomEmojis(token)
 
         if (pollingJob?.isActive == true) return
 

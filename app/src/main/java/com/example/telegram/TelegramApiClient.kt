@@ -34,6 +34,12 @@ data class TelegramEntity(
     val url: String? = null
 )
 
+enum class GithubButtonMode {
+    ENHANCED, // text, url, icon_custom_emoji_id, style="primary"
+    STANDARD, // text, url
+    NONE      // no inline button
+}
+
 data class TelegramUpdate(
     val updateId: Long,
     val messageId: Long?,
@@ -103,6 +109,92 @@ class TelegramApiClient {
         }
     }
 
+    /**
+     * Retrieves sticker information for custom emoji IDs using Telegram Bot API getCustomEmojiStickers.
+     * Returns a map of custom_emoji_id -> original Unicode emoji string.
+     */
+    suspend fun getCustomEmojiStickers(
+        token: String,
+        customEmojiIds: List<String>
+    ): Result<Map<String, String>> = withContext(Dispatchers.IO) {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Bot token cannot be empty"))
+        }
+        if (customEmojiIds.isEmpty()) {
+            return@withContext Result.success(emptyMap())
+        }
+
+        try {
+            val url = "https://api.telegram.org/bot$cleanToken/getCustomEmojiStickers"
+            val payload = JSONObject().apply {
+                val arr = JSONArray()
+                customEmojiIds.forEach { arr.put(it) }
+                put("custom_emoji_ids", arr)
+            }
+            val body = payload.toString().toRequestBody(jsonMediaType)
+            val request = Request.Builder()
+                .url(url)
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyString = response.body?.string() ?: ""
+                if (!response.isSuccessful) {
+                    val errDesc = parseErrorDescription(bodyString, response.code)
+                    return@withContext Result.failure(Exception(errDesc))
+                }
+
+                val json = JSONObject(bodyString)
+                if (!json.optBoolean("ok", false)) {
+                    val desc = json.optString("description", "Failed to fetch custom emoji stickers")
+                    return@withContext Result.failure(Exception(desc))
+                }
+
+                val map = parseCustomEmojiStickersResponse(bodyString)
+                Result.success(map)
+            }
+        } catch (e: Exception) {
+            Result.failure(formatException(e))
+        }
+    }
+
+    /**
+     * Parses the result array from getCustomEmojiStickers into a map of custom_emoji_id to emoji character.
+     */
+    fun parseCustomEmojiStickersResponse(jsonString: String): Map<String, String> {
+        val map = mutableMapOf<String, String>()
+        try {
+            val json = JSONObject(jsonString)
+            if (!json.optBoolean("ok", false)) return emptyMap()
+            val stickersArray = json.optJSONArray("result") ?: return emptyMap()
+            for (i in 0 until stickersArray.length()) {
+                val sticker = stickersArray.optJSONObject(i) ?: continue
+                val id = sticker.optString("custom_emoji_id", "")
+                val emoji = sticker.optString("emoji", "")
+                if (id.isNotBlank() && emoji.isNotBlank()) {
+                    map[id] = emoji
+                }
+            }
+        } catch (_: Exception) {}
+        return map
+    }
+
+    /**
+     * Builds the GitHub InlineKeyboardButton JSONObject according to button mode.
+     */
+    fun buildGithubButton(mode: GithubButtonMode): JSONObject? {
+        if (mode == GithubButtonMode.NONE) return null
+        return JSONObject().apply {
+            put("text", "GitHub")
+            put("url", "https://github.com/Sefeshki/")
+            if (mode == GithubButtonMode.ENHANCED) {
+                put("icon_custom_emoji_id", TelegramEntityHelper.GITHUB_EMOJI_ID)
+                put("style", "primary")
+            }
+        }
+    }
+
     suspend fun sendMessage(
         token: String,
         chatId: Long,
@@ -110,7 +202,18 @@ class TelegramApiClient {
         entities: List<TelegramEntity> = emptyList(),
         includeGithubButton: Boolean = true
     ): Result<TelegramMessage> = withContext(Dispatchers.IO) {
-        sendMessageInternal(token, chatId, text, entities, includeGithubButton)
+        val mode = if (includeGithubButton) GithubButtonMode.ENHANCED else GithubButtonMode.NONE
+        sendMessageInternal(token, chatId, text, entities, mode)
+    }
+
+    suspend fun sendMessage(
+        token: String,
+        chatId: Long,
+        text: String,
+        entities: List<TelegramEntity>,
+        buttonMode: GithubButtonMode
+    ): Result<TelegramMessage> = withContext(Dispatchers.IO) {
+        sendMessageInternal(token, chatId, text, entities, buttonMode)
     }
 
     private fun sendMessageInternal(
@@ -118,7 +221,7 @@ class TelegramApiClient {
         chatId: Long,
         text: String,
         entities: List<TelegramEntity>,
-        includeGithubButton: Boolean
+        buttonMode: GithubButtonMode
     ): Result<TelegramMessage> {
         val cleanToken = sanitizeToken(token)
         if (cleanToken.isBlank()) {
@@ -150,15 +253,11 @@ class TelegramApiClient {
                     put("entities", entitiesArray)
                 }
 
-                if (includeGithubButton) {
+                val githubBtn = buildGithubButton(buttonMode)
+                if (githubBtn != null) {
                     val replyMarkup = JSONObject()
                     val keyboard = JSONArray()
                     val row = JSONArray()
-
-                    val githubBtn = JSONObject().apply {
-                        put("text", "GitHub")
-                        put("url", "https://github.com/Sefeshki/")
-                    }
                     row.put(githubBtn)
                     keyboard.put(row)
                     replyMarkup.put("inline_keyboard", keyboard)
@@ -175,9 +274,22 @@ class TelegramApiClient {
             client.newCall(request).execute().use { response ->
                 val bodyString = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
-                    // If rejected with 400 Bad Request and button was included, retry without reply_markup
-                    if (response.code == 400 && includeGithubButton) {
-                        return sendMessageInternal(cleanToken, chatId, text, entities, includeGithubButton = false)
+                    // Graceful fallback for HTTP 400 Bad Request:
+                    // If Telegram rejects enhanced button (icon_custom_emoji_id / style), fallback to standard button.
+                    // If Telegram rejects standard button, fallback to sending message without button.
+                    // Message content and entities are NEVER dropped!
+                    if (response.code == 400) {
+                        when (buttonMode) {
+                            GithubButtonMode.ENHANCED -> {
+                                return sendMessageInternal(cleanToken, chatId, text, entities, GithubButtonMode.STANDARD)
+                            }
+                            GithubButtonMode.STANDARD -> {
+                                return sendMessageInternal(cleanToken, chatId, text, entities, GithubButtonMode.NONE)
+                            }
+                            GithubButtonMode.NONE -> {
+                                // Already no button, return error below
+                            }
+                        }
                     }
                     val errDesc = parseErrorDescription(bodyString, response.code)
                     return Result.failure(Exception(errDesc))
