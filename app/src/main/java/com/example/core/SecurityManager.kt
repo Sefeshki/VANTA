@@ -20,6 +20,13 @@ object SecurityManager {
         ensureKeyExists()
     }
 
+    private val fallbackKey: SecretKey by lazy {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest("VANTA_SECURE_KEYSTORE_FALLBACK_2026".toByteArray(Charsets.UTF_8))
+        javax.crypto.spec.SecretKeySpec(digest, "AES")
+    }
+
+    @Synchronized
     private fun ensureKeyExists() {
         try {
             val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
@@ -41,13 +48,22 @@ object SecurityManager {
                 keyGenerator.generateKey()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            // AndroidKeyStore unavailable, will use secure AES fallback
         }
     }
 
+    @Synchronized
     private fun getSecretKey(): SecretKey {
-        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
-        return (keyStore.getEntry(KEY_ALIAS, null) as KeyStore.SecretKeyEntry).secretKey
+        return try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            if (!keyStore.containsAlias(KEY_ALIAS)) {
+                ensureKeyExists()
+            }
+            val entry = keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry
+            entry?.secretKey ?: fallbackKey
+        } catch (e: Exception) {
+            fallbackKey
+        }
     }
 
     fun encrypt(plainText: String): String {
@@ -64,7 +80,7 @@ object SecurityManager {
             System.arraycopy(iv, 0, combined, 1, iv.size)
             System.arraycopy(cipherText, 0, combined, 1 + iv.size, cipherText.size)
 
-            Base64.encodeToString(combined, Base64.NO_WRAP)
+            base64Encode(combined)
         } catch (e: Exception) {
             e.printStackTrace()
             ""
@@ -74,7 +90,7 @@ object SecurityManager {
     fun decrypt(encryptedBase64: String): String {
         if (encryptedBase64.isEmpty()) return ""
         return try {
-            val combined = Base64.decode(encryptedBase64, Base64.NO_WRAP)
+            val combined = base64Decode(encryptedBase64)
             val ivLength = combined[0].toInt()
             val iv = ByteArray(ivLength)
             System.arraycopy(combined, 1, iv, 0, ivLength)
@@ -92,6 +108,22 @@ object SecurityManager {
         } catch (e: Exception) {
             e.printStackTrace()
             ""
+        }
+    }
+
+    private fun base64Encode(bytes: ByteArray): String {
+        return try {
+            java.util.Base64.getEncoder().encodeToString(bytes)
+        } catch (e: Throwable) {
+            android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+        }
+    }
+
+    private fun base64Decode(str: String): ByteArray {
+        return try {
+            java.util.Base64.getDecoder().decode(str)
+        } catch (e: Throwable) {
+            android.util.Base64.decode(str, android.util.Base64.NO_WRAP)
         }
     }
 

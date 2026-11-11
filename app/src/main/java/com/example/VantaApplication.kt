@@ -12,9 +12,12 @@ import com.example.service.VantaForegroundService
 import com.example.sms.SmsProcessor
 import com.example.telephony.SimManager
 import com.example.telegram.TelegramBotManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class VantaApplication : Application() {
 
@@ -51,6 +54,14 @@ class VantaApplication : Application() {
         telegramBotManager.simInfoProvider = { simManager.detectedSims.value }
         telegramBotManager.isForwardingActiveProvider = {
             preferencesManager.preferences.value.isForwardingEnabled && _isServiceRunning.value
+        }
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            networkMonitor.isInternetAvailable.collect { available ->
+                if (available && preferencesManager.telegramConfig.value.hasToken) {
+                    telegramBotManager.checkConnection()
+                }
+            }
         }
 
         EventLogger.log(LogCategory.SYSTEM, "VANTA is ready", LogLevel.SUCCESS)

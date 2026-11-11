@@ -54,9 +54,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -111,7 +115,26 @@ fun DashboardScreen(
     val sims by app.simManager.detectedSims.collectAsState()
     val logs by EventLogger.logs.collectAsState()
 
+    val isBotConnected by app.telegramBotManager.isConnected.collectAsState()
+
     var showTutorial by remember { mutableStateOf(!prefs.isTutorialCompleted) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                app.networkMonitor.refresh()
+                app.simManager.refreshSims()
+                if (telegramConfig.hasToken) {
+                    app.telegramBotManager.checkConnection()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -126,7 +149,11 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(Unit) {
+        app.networkMonitor.refresh()
         app.simManager.refreshSims()
+        if (telegramConfig.hasToken) {
+            app.telegramBotManager.checkConnection()
+        }
     }
 
     Scaffold(
@@ -254,12 +281,18 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                val isTelegramLive = if (telegramConfig.hasToken) {
+                    (isBotConnected || isTelegramReachable) && isInternet
+                } else {
+                    isTelegramReachable && isInternet
+                }
+
                 // 2. STATUS PANEL (Real-time technical metrics)
                 StatusPanel(
                     isForwardingActive = prefs.isForwardingEnabled,
                     isServiceRunning = isServiceRunning,
                     isInternetAvailable = isInternet,
-                    isTelegramConnected = telegramConfig.authorizedChatId != null && (isTelegramReachable || app.telegramBotManager.isConnected.collectAsState().value),
+                    isTelegramConnected = isTelegramLive,
                     pendingCount = pendingCount,
                     totalDelivered = app.preferencesManager.getTotalDeliveredCount(),
                     lastDelivery = app.preferencesManager.getLastDeliveryTime(),

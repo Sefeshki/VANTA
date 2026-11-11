@@ -142,4 +142,48 @@ class VantaUnitTest {
         assertFalse("OTP protection must be OFF by default", defaultPrefs.isOtpProtectionEnabled)
         assertFalse("Seen OTP suggestion must be false by default", defaultPrefs.hasSeenOtpSuggestion)
     }
+
+    @Test
+    fun testTelegramTokenSanitization() {
+        val client = com.example.telegram.TelegramApiClient()
+        val rawToken = "123456789:ABCdefGhIJKlmNoPQRstuVWXyz"
+
+        // Plain token with surrounding whitespace
+        assertEquals(rawToken, client.sanitizeToken("  $rawToken  \n"))
+
+        // Token prefixed with "bot"
+        assertEquals(rawToken, client.sanitizeToken("bot$rawToken"))
+        assertEquals(rawToken, client.sanitizeToken("BOT$rawToken"))
+
+        // Full Telegram Bot API URL
+        assertEquals(rawToken, client.sanitizeToken("https://api.telegram.org/bot$rawToken/getMe"))
+        assertEquals(rawToken, client.sanitizeToken("https://api.telegram.org/bot$rawToken"))
+    }
+
+    @Test
+    fun testTelegramApiClientTokenValidation() = kotlinx.coroutines.runBlocking {
+        val client = com.example.telegram.TelegramApiClient()
+
+        // Empty token
+        val emptyResult = client.getMe("")
+        assertTrue(emptyResult.isFailure)
+        assertTrue(emptyResult.exceptionOrNull()?.message?.contains("cannot be empty") == true)
+
+        // Invalid format without colon
+        val invalidResult = client.getMe("abcdef123456789")
+        assertTrue(invalidResult.isFailure)
+        assertTrue(invalidResult.exceptionOrNull()?.message?.contains("Invalid token format") == true)
+    }
+
+    @Test
+    fun testSecurityManagerEncryptionAndDecryption() {
+        val sampleToken = "123456789:ABCdefGhIJKlmNoPQRstuVWXyz_Test123"
+        val encrypted = com.example.core.SecurityManager.encrypt(sampleToken)
+        assertNotNull(encrypted)
+        assertTrue(encrypted.isNotBlank())
+        assertFalse(encrypted.contains(sampleToken))
+
+        val decrypted = com.example.core.SecurityManager.decrypt(encrypted)
+        assertEquals(sampleToken, decrypted)
+    }
 }

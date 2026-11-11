@@ -1,12 +1,17 @@
 package com.example.telegram
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLException
 
 data class TelegramUser(
     val id: Long,
@@ -43,13 +48,24 @@ class TelegramApiClient {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(25, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    fun getMe(token: String): Result<TelegramUser> {
-        return try {
-            val url = "https://api.telegram.org/bot$token/getMe"
+    suspend fun getMe(token: String): Result<TelegramUser> = withContext(Dispatchers.IO) {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Bot token cannot be empty"))
+        }
+        if (!cleanToken.contains(":") || cleanToken.length < 15) {
+            return@withContext Result.failure(
+                IllegalArgumentException("Invalid token format. Telegram tokens look like 123456789:ABCdef...")
+            )
+        }
+
+        try {
+            val url = "https://api.telegram.org/bot$cleanToken/getMe"
             val request = Request.Builder()
                 .url(url)
                 .get()
@@ -59,38 +75,58 @@ class TelegramApiClient {
                 val bodyString = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
                     val errDesc = parseErrorDescription(bodyString, response.code)
-                    return Result.failure(Exception(errDesc))
+                    return@withContext Result.failure(Exception(errDesc))
                 }
 
                 val json = JSONObject(bodyString)
                 if (!json.optBoolean("ok", false)) {
-                    val desc = json.optString("description", "Unknown error")
-                    return Result.failure(Exception(desc))
+                    val desc = json.optString("description", "Unknown Telegram error")
+                    return@withContext Result.failure(Exception(desc))
                 }
 
                 val result = json.getJSONObject("result")
+                val isBot = result.optBoolean("is_bot", true)
+                if (!isBot) {
+                    return@withContext Result.failure(Exception("Provided token belongs to a user account, not a Telegram bot."))
+                }
+
                 val user = TelegramUser(
                     id = result.getLong("id"),
-                    isBot = result.optBoolean("is_bot", true),
+                    isBot = true,
                     firstName = result.optString("first_name", ""),
                     username = if (result.has("username")) result.getString("username") else null
                 )
                 Result.success(user)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(formatException(e))
         }
     }
 
-    fun sendMessage(
+    suspend fun sendMessage(
         token: String,
         chatId: Long,
         text: String,
         entities: List<TelegramEntity> = emptyList(),
         includeGithubButton: Boolean = true
+    ): Result<TelegramMessage> = withContext(Dispatchers.IO) {
+        sendMessageInternal(token, chatId, text, entities, includeGithubButton)
+    }
+
+    private fun sendMessageInternal(
+        token: String,
+        chatId: Long,
+        text: String,
+        entities: List<TelegramEntity>,
+        includeGithubButton: Boolean
     ): Result<TelegramMessage> {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return Result.failure(IllegalArgumentException("Bot token not configured"))
+        }
+
         return try {
-            val url = "https://api.telegram.org/bot$token/sendMessage"
+            val url = "https://api.telegram.org/bot$cleanToken/sendMessage"
             val payload = JSONObject().apply {
                 put("chat_id", chatId)
                 put("text", text)
@@ -122,8 +158,6 @@ class TelegramApiClient {
                     val githubBtn = JSONObject().apply {
                         put("text", "GitHub")
                         put("url", "https://github.com/Sefeshki/")
-                        // icon_custom_emoji_id is Telegram's field for button custom emoji
-                        put("icon_custom_emoji_id", TelegramEntityHelper.GITHUB_EMOJI_ID)
                     }
                     row.put(githubBtn)
                     keyboard.put(row)
@@ -141,6 +175,10 @@ class TelegramApiClient {
             client.newCall(request).execute().use { response ->
                 val bodyString = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
+                    // If rejected with 400 Bad Request and button was included, retry without reply_markup
+                    if (response.code == 400 && includeGithubButton) {
+                        return sendMessageInternal(cleanToken, chatId, text, entities, includeGithubButton = false)
+                    }
                     val errDesc = parseErrorDescription(bodyString, response.code)
                     return Result.failure(Exception(errDesc))
                 }
@@ -160,13 +198,18 @@ class TelegramApiClient {
                 Result.success(msg)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(formatException(e))
         }
     }
 
-    fun getUpdates(token: String, offset: Long?, limit: Int = 10): Result<List<TelegramUpdate>> {
-        return try {
-            val urlBuilder = StringBuilder("https://api.telegram.org/bot$token/getUpdates?timeout=5&limit=$limit")
+    suspend fun getUpdates(token: String, offset: Long?, limit: Int = 10): Result<List<TelegramUpdate>> = withContext(Dispatchers.IO) {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Bot token not configured"))
+        }
+
+        try {
+            val urlBuilder = StringBuilder("https://api.telegram.org/bot$cleanToken/getUpdates?timeout=5&limit=$limit")
             if (offset != null) {
                 urlBuilder.append("&offset=").append(offset)
             }
@@ -178,12 +221,13 @@ class TelegramApiClient {
             client.newCall(request).execute().use { response ->
                 val bodyString = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
-                    return Result.failure(Exception("HTTP ${response.code}: $bodyString"))
+                    val errDesc = parseErrorDescription(bodyString, response.code)
+                    return@withContext Result.failure(Exception(errDesc))
                 }
 
                 val json = JSONObject(bodyString)
                 if (!json.optBoolean("ok", false)) {
-                    return Result.failure(Exception(json.optString("description", "Failed to fetch updates")))
+                    return@withContext Result.failure(Exception(json.optString("description", "Failed to fetch updates")))
                 }
 
                 val updatesArray = json.getJSONArray("result")
@@ -214,16 +258,45 @@ class TelegramApiClient {
                 Result.success(list)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(formatException(e))
         }
     }
 
+    fun sanitizeToken(raw: String): String {
+        var t = raw.trim()
+        if (t.startsWith("https://api.telegram.org/bot", ignoreCase = true)) {
+            t = t.substring(28).substringBefore("/").substringBefore("?")
+        } else if (t.startsWith("http://api.telegram.org/bot", ignoreCase = true)) {
+            t = t.substring(27).substringBefore("/").substringBefore("?")
+        } else if (t.startsWith("bot", ignoreCase = true) && t.length > 3 && t[3].isDigit()) {
+            t = t.substring(3)
+        }
+        return t.trim()
+    }
+
     private fun parseErrorDescription(body: String, code: Int): String {
-        return try {
+        val apiDescription = try {
             val json = JSONObject(body)
-            json.optString("description", "HTTP $code")
+            json.optString("description", "")
         } catch (e: Exception) {
-            "HTTP $code: $body"
+            ""
+        }
+        return when {
+            code == 401 -> "Invalid bot token (Unauthorized). Please verify with @BotFather."
+            code == 404 -> "Bot not found (404). Check the token format."
+            code == 400 && apiDescription.isNotBlank() -> "Telegram request error: $apiDescription"
+            code == 429 -> "Telegram rate limit reached (429). Please wait a moment."
+            apiDescription.isNotBlank() -> apiDescription
+            else -> "Telegram error (HTTP $code)"
+        }
+    }
+
+    private fun formatException(e: Exception): Exception {
+        return when (e) {
+            is UnknownHostException -> Exception("Cannot connect to Telegram servers. Please check your internet connection.", e)
+            is SocketTimeoutException -> Exception("Connection to Telegram timed out. Please try again.", e)
+            is SSLException -> Exception("Secure TLS connection to Telegram failed. Check network or date/time settings.", e)
+            else -> Exception(e.message ?: "Failed to connect to Telegram", e)
         }
     }
 }

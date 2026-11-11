@@ -44,8 +44,8 @@ class TelegramBotManager(
         }
     }
 
-    suspend fun verifyAndSaveToken(token: String): Result<TelegramUser> {
-        val cleanToken = token.trim()
+    suspend fun verifyAndSaveToken(token: String): Result<TelegramUser> = kotlinx.coroutines.withContext(Dispatchers.IO) {
+        val cleanToken = apiClient.sanitizeToken(token)
         val result = apiClient.getMe(cleanToken)
         result.onSuccess { user ->
             preferencesManager.saveBotToken(cleanToken, user.username, user.id)
@@ -64,7 +64,22 @@ class TelegramBotManager(
                 LogLevel.ERROR
             )
         }
-        return result
+        result
+    }
+
+    fun checkConnection() {
+        val token = preferencesManager.getDecryptedBotToken()
+        if (token.isEmpty()) {
+            _isConnected.value = false
+            return
+        }
+        scope.launch {
+            val res = apiClient.getMe(token)
+            _isConnected.value = res.isSuccess
+            if (res.isSuccess && !_isPollingActive.value) {
+                startPolling()
+            }
+        }
     }
 
     fun generatePairingCode(): String {

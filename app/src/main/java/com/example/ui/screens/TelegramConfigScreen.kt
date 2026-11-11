@@ -251,15 +251,21 @@ fun TelegramConfigScreen(
             ) {
                 Button(
                     onClick = {
-                        val token = tokenInput.trim()
-                        if (token.isEmpty()) {
+                        val tokenToVerify = if (tokenInput.isNotBlank()) {
+                            tokenInput.trim()
+                        } else if (config.hasToken) {
+                            app.preferencesManager.getDecryptedBotToken()
+                        } else {
+                            ""
+                        }
+                        if (tokenToVerify.isEmpty()) {
                             Toast.makeText(context, "Please paste your bot token", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         isValidating = true
                         validationError = null
                         scope.launch {
-                            val res = app.telegramBotManager.verifyAndSaveToken(token)
+                            val res = app.telegramBotManager.verifyAndSaveToken(tokenToVerify)
                             isValidating = false
                             if (res.isSuccess) {
                                 tokenInput = ""
