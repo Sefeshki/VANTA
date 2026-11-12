@@ -157,15 +157,13 @@ That's it. Your phone is now your SMS bridge.
 
 VANTA is released under the **MIT License**.
 
-See LICENSE for the full license text.
+See [LICENSE](https://github.com/Sefeshki/VANTA/blob/main/LICENSE) for the full license text.
 
 ---
 
- <div align="center">
-
-<img src="https://capsule-render.vercel.app/api?type=waving&height=180&color=0:050505,20:16002d,50:4c1d95,80:16002d,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=30&fontAlignY=50&animation=fadeIn&stroke=8b5cf6&strokeWidth=1" width="100%" />
-
 <div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:050505,50:24004f,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
 
 **MADE BY [SEFESHKI](https://github.com/Sefeshki)**
 
