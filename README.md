@@ -6,7 +6,7 @@
 
 A self-hosted Android SMS-to-Telegram bridge. Turn a spare Android phone into your personal SMS gateway.
 
-**Not a vibe-coded template.** VANTA is a purpose-built Android application, developed with Kotlin and Jetpack Compose.
+**Not a vibe-coded template.** VANTA is a purpose-built Android application developed with Kotlin and Jetpack Compose.
 
 <br/>
 
@@ -67,7 +67,7 @@ No separate server to maintain. No third-party forwarding platform. Your phone h
 
 - Android Keystore encryption
 - AES-256-GCM credential protection
-- OTP and verification-code filtering
+- Optional OTP / verification-code filtering
 - Authorized Telegram user checks
 - Credential cleanup on disconnect
 
@@ -92,25 +92,41 @@ VANTA runs on your Android device and communicates directly with the official Te
 
 **A little network reality:** SMS reception happens on the phone, but delivering messages to Telegram requires an internet connection. Local settings and parts of the application remain usable offline.
 
+---
+
+<br/>
+
+<div align="center">
+
 ### ◈ SECURITY IS NOT AN AFTERTHOUGHT
+
+</div>
 
 - Bot credentials are protected using Android Keystore-backed AES-256-GCM encryption.
 - Telegram communication uses HTTPS.
 - Telegram commands are restricted to authorized users.
-- OTP and authentication-code detection helps prevent sensitive verification messages from being forwarded.
+- OTP filtering is optional. You can enable it to help prevent sensitive verification messages from being forwarded, or leave it disabled if you want those messages delivered normally.
 - VANTA does not provide remote shell execution.
 
 Your SMS messages are intentionally transmitted to the Telegram destination you configure. Keep your bot token private and only authorize people you trust.
 
+---
+
+<br/><br/>
+
+<div align="center">
+
 ### ◈ GETTING STARTED
 
-**1 — Create your bot**
+</div>
+
+**01 — Create your bot**
 
 Open [@BotFather](https://t.me/BotFather) in Telegram.
 
 Send `/newbot`, choose a name and username, then copy your API token.
 
-**2 — Connect VANTA**
+**02 — Connect VANTA**
 
 - Install VANTA on your Android phone.
 - Open Telegram Setup.
@@ -119,17 +135,19 @@ Send `/newbot`, choose a name and username, then copy your API token.
 - Generate your pairing code.
 - Open your bot and send `/start YOUR_CODE`.
 
-**3 — Give VANTA permission**
+**03 — Give VANTA permission**
 
 Open Permission Center and grant the required SMS, notification, and phone-state permissions.
 
 Configure your SIM filtering and battery settings.
 
-**4 — Activate**
+**04 — Activate**
 
 Return to the Dashboard and enable forwarding.
 
 That's it. Your phone is now your SMS bridge.
+
+---
 
 ### ◈ BUILT WITH
 
@@ -145,7 +163,7 @@ See LICENSE for the full license text.
 
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=rect&height=100&color=0:050505,50:24004f,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&animation=fadeIn" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=waving&height=160&color=0:050505,25:17002f,50:4c1d95,75:17002f,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=28&fontAlignY=55&animation=twinkling" width="100%" />
 
 **MADE BY [SEFESHKI](https://github.com/Sefeshki)**
 
