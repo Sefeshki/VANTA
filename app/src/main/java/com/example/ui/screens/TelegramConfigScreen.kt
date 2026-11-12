@@ -76,7 +76,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.ui.components.GlowCard
+import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
+import com.example.ui.components.TelegramBotTutorialDialog
 import com.example.ui.theme.LocalVantaColors
 import kotlinx.coroutines.launch
 
@@ -92,6 +94,8 @@ fun TelegramConfigScreen(
 
     val config by app.preferencesManager.telegramConfig.collectAsState()
     val isConnected by app.telegramBotManager.isConnected.collectAsState()
+
+    var showBotTutorial by remember { mutableStateOf(false) }
 
     var tokenInput by remember { mutableStateOf("") }
     var isTokenVisible by remember { mutableStateOf(false) }
@@ -186,6 +190,63 @@ fun TelegramConfigScreen(
                     StatusDot(
                         isActive = config.authorizedChatId != null && isConnected,
                         size = 10.dp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tutorial trigger: "Don't have a bot yet? Learn how to create one."
+            LiquidGlassCard(
+                onClick = { showBotTutorial = true },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("open_bot_tutorial_btn")
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(colors.primaryDark),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = null,
+                                tint = colors.primaryBright,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Don't have a bot yet?",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Learn how to create one in 5 steps",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.primaryBright
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = colors.textMuted,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -565,4 +626,9 @@ fun TelegramConfigScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+
+    TelegramBotTutorialDialog(
+        isVisible = showBotTutorial,
+        onDismiss = { showBotTutorial = false }
+    )
 }

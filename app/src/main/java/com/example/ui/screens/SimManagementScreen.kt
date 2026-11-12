@@ -3,7 +3,9 @@ package com.example.ui.screens
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -374,16 +376,23 @@ private fun SelectionModeCard(
     onClick: () -> Unit
 ) {
     val colors = LocalVantaColors.current
+    val shape = RoundedCornerShape(16.dp)
+
+    val strokeBrush = Brush.linearGradient(
+        colors = listOf(
+            if (isSelected) colors.primaryBright.copy(alpha = 0.8f) else colors.border.copy(alpha = 0.5f),
+            if (isSelected) colors.primaryGlow.copy(alpha = 0.4f) else colors.border.copy(alpha = 0.2f),
+            colors.border.copy(alpha = 0.3f)
+        )
+    )
 
     Surface(
-        color = if (isSelected) colors.surfaceElevated else colors.surface,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(
-            1.dp,
-            if (isSelected) colors.primaryBright else colors.border
-        ),
+        color = if (isSelected) colors.primaryDark.copy(alpha = 0.35f) else Color(0xCC0D0B18),
+        shape = shape,
         modifier = Modifier
             .fillMaxWidth()
+            .clip(shape)
+            .border(1.dp, strokeBrush, shape)
             .clickable(onClick = onClick)
             .testTag("sim_mode_${mode.name}")
     ) {

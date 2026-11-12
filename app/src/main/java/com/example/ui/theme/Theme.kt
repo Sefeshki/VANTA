@@ -54,7 +54,7 @@ fun getVantaColors(themeId: VantaThemeId): VantaColors {
         surface = VantaSurface,
         surfaceElevated = VantaSurfaceElevated,
         border = VantaBorder,
-        borderGlow = VantaBorderGlow,
+        borderGlow = glow.copy(alpha = 0.45f),
         primary = primary,
         primaryBright = bright,
         primaryGlow = glow,

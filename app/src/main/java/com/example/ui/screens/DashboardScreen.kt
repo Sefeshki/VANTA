@@ -4,21 +4,30 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,11 +41,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CellTower
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
@@ -50,6 +64,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -87,13 +102,22 @@ import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
 import com.example.data.model.SimSelectionMode
 import com.example.service.VantaForegroundService
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.BorderStroke
+import com.example.core.UpdateManager
+import com.example.core.UpdateState
+import com.example.ui.components.AnimatedHamburgerArrow
+import com.example.ui.components.CircularGithubButton
 import com.example.ui.components.CyberTerminal
 import com.example.ui.components.GlowCard
+import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.OtpSuggestionDialog
 import com.example.ui.components.SpotlightTutorialOverlay
 import com.example.ui.components.StatusDot
+import com.example.ui.components.UpdateDialog
 import com.example.ui.components.VpnToggleSwitch
 import com.example.ui.theme.LocalVantaColors
+import com.example.ui.theme.VantaThemeId
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -104,11 +128,20 @@ fun DashboardScreen(
     onNavigateToSims: () -> Unit,
     onNavigateToTelegram: () -> Unit,
     onNavigateToPermissions: () -> Unit,
-    onNavigateToSettings: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToPrivacyProtection: () -> Unit = {},
+    onNavigateToSystemHealth: () -> Unit = {}
 ) {
     val colors = LocalVantaColors.current
     val context = LocalContext.current
     val app = context.applicationContext as VantaApplication
+
+    var isDrawerOpen by remember { mutableStateOf(false) }
+    BackHandler(enabled = isDrawerOpen) {
+        isDrawerOpen = false
+    }
+
+    val updateState by UpdateManager.state.collectAsState()
 
     val prefs by app.preferencesManager.preferences.collectAsState()
     val telegramConfig by app.preferencesManager.telegramConfig.collectAsState()
@@ -152,12 +185,21 @@ fun DashboardScreen(
         }
     }
 
+    var showUpdateModal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(updateState) {
+        if (updateState is UpdateState.Downloading || updateState is UpdateState.ReadyToInstall) {
+            showUpdateModal = true
+        }
+    }
+
     LaunchedEffect(Unit) {
         app.networkMonitor.refresh()
         app.simManager.refreshSims()
         if (telegramConfig.hasToken) {
             app.telegramBotManager.checkConnection()
         }
+        UpdateManager.checkForUpdates()
     }
 
     Scaffold(
@@ -205,16 +247,11 @@ fun DashboardScreen(
                             tint = if (hasSms) colors.success else colors.warning
                         )
                     }
-                    IconButton(
-                        onClick = onNavigateToSettings,
+                    AnimatedHamburgerArrow(
+                        isOpen = isDrawerOpen,
+                        onClick = { isDrawerOpen = !isDrawerOpen },
                         modifier = Modifier.testTag("dashboard_nav_settings")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = colors.textPrimary
-                        )
-                    }
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = colors.background
@@ -614,7 +651,421 @@ fun DashboardScreen(
                     app.preferencesManager.setSeenOtpSuggestion(true)
                 }
             )
+
+            // Scrim Overlay when Drawer is open
+            AnimatedVisibility(
+                visible = isDrawerOpen,
+                enter = fadeIn(tween(250)),
+                exit = fadeOut(tween(200))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.65f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { isDrawerOpen = false }
+                        )
+                        .testTag("drawer_scrim")
+                )
+            }
+
+            // Left Animated Navigation Drawer (~83% width)
+            AnimatedVisibility(
+                visible = isDrawerOpen,
+                enter = slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+                ) + fadeIn(tween(250)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing)
+                ) + fadeOut(tween(200)),
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(0.83f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
+                        .border(
+                            width = 1.2.dp,
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    colors.primaryBright.copy(alpha = 0.55f),
+                                    colors.primaryGlow.copy(alpha = 0.25f),
+                                    colors.border.copy(alpha = 0.30f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
+                        )
+                        .testTag("nav_drawer_content"),
+                    shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
+                    color = Color(0xF20D0B18),
+                    tonalElevation = 6.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        colors.primaryDark.copy(alpha = 0.35f),
+                                        Color(0x0A0D0B18)
+                                    )
+                                )
+                            )
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 18.dp, vertical = 20.dp)
+                    ) {
+                        // Drawer Header: VANTA logo + title + (Optional) Update Available button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.vanta_icon),
+                                    contentDescription = "Logo",
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "VANTA",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 2.sp
+                                        ),
+                                        color = colors.textPrimary
+                                    )
+                                    Text(
+                                        text = "SMS Bridge • v${com.example.BuildConfig.VERSION_NAME}",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = FontFamily.Monospace
+                                        ),
+                                        color = colors.textMuted
+                                    )
+                                }
+                            }
+
+                            // Only show an "Update Available" button at the top-right when a newer release exists
+                            if (updateState is UpdateState.UpdateAvailable) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.primary.copy(alpha = 0.25f),
+                                    border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.6f)),
+                                    modifier = Modifier
+                                        .clickable {
+                                            showUpdateModal = true
+                                        }
+                                        .testTag("drawer_check_updates_btn")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudSync,
+                                            contentDescription = null,
+                                            tint = colors.primaryBright,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = "UPDATE AVAILABLE",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold
+                                            ),
+                                            color = colors.primaryBright
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Text(
+                            text = "DESTINATIONS",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = colors.primaryBright
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Destination 1: Telegram Bot Management
+                        DrawerNavItem(
+                            icon = Icons.Default.Send,
+                            title = "Telegram Bot",
+                            subtitle = if (telegramConfig.hasToken) "@${telegramConfig.botUsername ?: "bot"} • Connected" else "Configure bot token & chat pairing",
+                            onClick = {
+                                isDrawerOpen = false
+                                onNavigateToTelegram()
+                            },
+                            testTag = "drawer_nav_telegram"
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Destination 2: Privacy & Protection
+                        DrawerNavItem(
+                            icon = Icons.Default.Shield,
+                            title = "Privacy & Protection",
+                            subtitle = if (prefs.isOtpProtectionEnabled) "OTP shield active • Keystore secure" else "OTP shield off • Keystore secure",
+                            onClick = {
+                                isDrawerOpen = false
+                                onNavigateToPrivacyProtection()
+                            },
+                            testTag = "drawer_nav_privacy"
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Destination 3: System Health
+                        DrawerNavItem(
+                            icon = Icons.Default.CellTower,
+                            title = "System Health",
+                            subtitle = if (isServiceRunning) "Forwarding service live • Diagnostics" else "Service idle • Diagnostics",
+                            onClick = {
+                                isDrawerOpen = false
+                                onNavigateToSystemHealth()
+                            },
+                            testTag = "drawer_nav_health"
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Theme Accent
+                        Text(
+                            text = "THEME ACCENT",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = colors.primaryBright
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            VantaThemeId.entries.forEach { themeOption ->
+                                DrawerThemeChip(
+                                    theme = themeOption,
+                                    isSelected = prefs.theme == themeOption,
+                                    onSelect = { app.preferencesManager.setTheme(themeOption) }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Replay Tutorial
+                        DrawerNavItem(
+                            icon = Icons.Default.HelpOutline,
+                            title = "Replay Quick Tour",
+                            subtitle = "Walk through the 10-step guide again",
+                            onClick = {
+                                isDrawerOpen = false
+                                showTutorial = true
+                                app.preferencesManager.setTutorialCompleted(false)
+                            },
+                            testTag = "drawer_nav_tutorial"
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // GitHub Button & Attribution
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularGithubButton(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Sefeshki/VANTA"))
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "VANTA by Sefeshki • Open source",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textMuted
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "v${com.example.BuildConfig.VERSION_NAME} • ${
+                                    when (updateState) {
+                                        is UpdateState.Checking -> "Checking for updates..."
+                                        is UpdateState.UpdateAvailable -> "Update available: ${(updateState as UpdateState.UpdateAvailable).release.tagName}"
+                                        is UpdateState.Downloading -> "Downloading update..."
+                                        is UpdateState.ReadyToInstall -> "Ready to install!"
+                                        is UpdateState.Error -> "Update check error"
+                                        else -> "Up to date!"
+                                    }
+                                }",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = if (updateState is UpdateState.UpdateAvailable) FontWeight.Bold else FontWeight.Normal
+                                ),
+                                color = if (updateState is UpdateState.UpdateAvailable) colors.primaryBright else colors.textMuted,
+                                modifier = Modifier.testTag("drawer_version_status")
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
+                }
+            }
+
+            // Update Dialog Modal
+            if (showUpdateModal && updateState !is UpdateState.Idle) {
+                UpdateDialog(
+                    updateState = updateState,
+                    onDismiss = {
+                        showUpdateModal = false
+                        if (updateState is UpdateState.UpToDate || updateState is UpdateState.Error) {
+                            UpdateManager.resetState()
+                        }
+                    },
+                    onStartDownload = { release -> UpdateManager.startDownload(context, release) },
+                    onCancelDownload = {
+                        UpdateManager.cancelDownload()
+                        showUpdateModal = false
+                    },
+                    onInstall = { apkFile -> UpdateManager.promptInstall(context, apkFile) },
+                    onCheckAgain = { UpdateManager.checkForUpdates() }
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun DrawerNavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    testTag: String
+) {
+    val colors = LocalVantaColors.current
+    LiquidGlassCard(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        modifier = Modifier.testTag(testTag)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = colors.primaryBright,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = colors.textMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DrawerThemeChip(
+    theme: VantaThemeId,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    val colors = LocalVantaColors.current
+    val accent = Color(theme.primaryColorHex)
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onSelect)
+            .padding(4.dp)
+            .testTag("drawer_theme_${theme.name}")
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF0C0C14))
+                .border(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = if (isSelected) accent else colors.border,
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(accent)
+            )
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = theme.displayName,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            ),
+            color = if (isSelected) colors.textPrimary else colors.textMuted
+        )
     }
 }
 

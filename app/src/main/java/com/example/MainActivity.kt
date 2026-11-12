@@ -21,9 +21,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.PermissionCenterScreen
+import com.example.ui.screens.PrivacyProtectionScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SimManagementScreen
 import com.example.ui.screens.SplashScreen
+import com.example.ui.screens.SystemHealthScreen
 import com.example.ui.screens.TelegramConfigScreen
 import com.example.ui.theme.MyApplicationTheme
 
@@ -72,7 +74,9 @@ fun VantaAppNavHost(
                 onNavigateToSims = { navController.navigate("sim_management") },
                 onNavigateToTelegram = { navController.navigate("telegram_config") },
                 onNavigateToPermissions = { navController.navigate("permission_center") },
-                onNavigateToSettings = { navController.navigate("settings") }
+                onNavigateToSettings = { navController.navigate("settings") },
+                onNavigateToPrivacyProtection = { navController.navigate("privacy_protection") },
+                onNavigateToSystemHealth = { navController.navigate("system_health") }
             )
         }
 
@@ -136,6 +140,35 @@ fun VantaAppNavHost(
                         popUpTo("dashboard") { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(
+            route = "privacy_protection",
+            enterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300))
+            }
+        ) {
+            PrivacyProtectionScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "system_health",
+            enterTransition = {
+                slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300))
+            }
+        ) {
+            SystemHealthScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToPermissions = { navController.navigate("permission_center") }
             )
         }
     }

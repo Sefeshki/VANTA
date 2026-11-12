@@ -302,4 +302,67 @@ class VantaUnitTest {
         val noneBtn = client.buildGithubButton(com.example.telegram.GithubButtonMode.NONE)
         org.junit.Assert.assertNull(noneBtn)
     }
+
+    @Test
+    fun testUpdateManagerSemanticVersionComparison() {
+        // Newer versions
+        assertTrue(com.example.core.UpdateManager.compareVersions("1.1", "1.0") > 0)
+        assertTrue(com.example.core.UpdateManager.compareVersions("v1.2.0", "1.1.9") > 0)
+        assertTrue(com.example.core.UpdateManager.compareVersions("2.0.0", "1.9.9") > 0)
+        assertTrue(com.example.core.UpdateManager.compareVersions("1.0.1", "1.0") > 0)
+
+        // Same versions
+        assertEquals(0, com.example.core.UpdateManager.compareVersions("1.0", "1.0"))
+        assertEquals(0, com.example.core.UpdateManager.compareVersions("v1.0.0", "1.0"))
+        assertEquals(0, com.example.core.UpdateManager.compareVersions("1.0-release", "1.0"))
+
+        // Older versions
+        assertTrue(com.example.core.UpdateManager.compareVersions("0.9.5", "1.0") < 0)
+        assertTrue(com.example.core.UpdateManager.compareVersions("1.0", "1.1") < 0)
+    }
+
+    @Test
+    fun testUpdateManagerParseReleaseJsonWithApkAsset() {
+        val mockJson = """
+            {
+                "tag_name": "v1.1",
+                "name": "VANTA v1.1 - Event Horizon",
+                "body": "- Liquid Glass Drawer\n- Auto Update System",
+                "html_url": "https://github.com/Sefeshki/VANTA/releases/tag/v1.1",
+                "assets": [
+                    {
+                        "name": "vanta-v1.1.apk",
+                        "size": 15728640,
+                        "browser_download_url": "https://github.com/Sefeshki/VANTA/releases/download/v1.1/vanta-v1.1.apk"
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val result = com.example.core.UpdateManager.parseReleaseJson(mockJson)
+        assertTrue(result.isSuccess)
+        val release = result.getOrThrow()
+        assertEquals("v1.1", release.tagName)
+        assertEquals("1.1", release.versionName)
+        assertEquals("vanta-v1.1.apk", release.apkFileName)
+        assertEquals(15728640L, release.apkSizeBytes)
+        assertEquals("https://github.com/Sefeshki/VANTA/releases/download/v1.1/vanta-v1.1.apk", release.apkDownloadUrl)
+    }
+
+    @Test
+    fun testUpdateManagerParseReleaseJsonWithoutApkFails() {
+        val mockJsonNoApk = """
+            {
+                "tag_name": "v1.1",
+                "name": "Source release only",
+                "body": "No build artifacts",
+                "assets": []
+            }
+        """.trimIndent()
+
+        val result = com.example.core.UpdateManager.parseReleaseJson(mockJsonNoApk)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("no .apk asset") == true)
+    }
 }
+
