@@ -12,7 +12,7 @@ A self-hosted Android SMS-to-Telegram bridge. Turn a spare Android phone into yo
 
 <a href="https://github.com/Sefeshki/VANTA/releases"><img src="https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=8b5cf6&label=RELEASE" /></a>
 <a href="https://github.com/Sefeshki/VANTA"><img src="https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=06b6d4" /></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-8b5cf6?style=for-the-badge" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-8b5cf6?style=for-the-badge" /></a>
 <img src="https://img.shields.io/badge/PLATFORM-ANDROID-22c55e?style=for-the-badge" />
 
 <br/><br/>
@@ -155,7 +155,9 @@ That's it. Your phone is now your SMS bridge.
 
 ### ◈ LICENSE
 
-VANTA is released under the **MIT License**.
+VANTA is **Source-Available** under the **PolyForm Noncommercial License 1.0.0**.
+
+Free for noncommercial use. Commercial use requires permission from the author.
 
 See [LICENSE](https://github.com/Sefeshki/VANTA/blob/main/LICENSE) for the full license text.
 
