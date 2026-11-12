@@ -1,129 +1,199 @@
-# VANTA — SMS-to-Telegram Bridge
+ <div align="center">
 
-![VANTA Cyberpunk SMS Bridge](app/src/main/res/drawable/vanta_icon.png)
+<img src="https://capsule-render.vercel.app/api?type=waving&height=230&color=0:080808,50:24004f,100:050505&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=38&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=60&animation=fadeIn&stroke=8b5cf6&strokeWidth=1" width="100%" />
 
-**VANTA** is a production-oriented, open-source Android SMS-to-Telegram bridge designed and created by **[Sefeshki](https://github.com/Sefeshki/)**.
+### Your phone. Your SIM. Your Telegram.
 
-VANTA allows you to leave a secondary Android phone powered on with your SIM cards, transparently forwarding all incoming SMS messages directly to your personal Telegram bot with military-grade privacy, dual-SIM filtering, real-time cyber telemetry, and zero covert surveillance.
+A self-hosted Android SMS-to-Telegram bridge. Turn a spare Android phone into your personal SMS gateway.
 
----
+<br/>
 
-## ⚡ Features
+<a href="https://github.com/Sefeshki/VANTA/releases"><img src="https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=8b5cf6&label=RELEASE" /></a>
+<a href="https://github.com/Sefeshki/VANTA"><img src="https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=06b6d4" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-MIT-8b5cf6?style=for-the-badge" /></a>
+<img src="https://img.shields.io/badge/PLATFORM-ANDROID-22c55e?style=for-the-badge" />
 
-- **Cyberpunk Dark Aesthetic**: Technical VPN-style dashboard, glowing controls, real-time monospace telemetry, and 4 complete color themes:
-  - 🟣 **Black / Neon Purple** (Default)
-  - 🔴 **Black / Crimson Red**
-  - 🔵 **Black / Sapphire Blue**
-  - 🟢 **Black / Cyber Cyan**
-- **Dual-SIM Identification & Filtering**:
-  - Independent hardware slot inspection via Android `SubscriptionManager`.
-  - Filter modes: **Both SIMs**, **SIM1 Only**, or **SIM2 Only**.
-  - Respects Android carrier privacy when phone numbers are masked.
-- **Direct Telegram Bot API Integration**:
-  - Direct HTTPS communication via OkHttp with `api.telegram.org` (no third-party proxy or middleman servers).
-  - Telegram `custom_emoji` support with exact UTF-16 entity calculations.
-  - Interactive inline GitHub URL button under all notifications.
-- **Hardware-Backed Credential Security**:
-  - Bot token stored encrypted with Android Keystore AES-256-GCM.
-  - Complete credential purging on disconnect.
-  - No plaintext tokens or SMS bodies ever written to logs or storage.
-- **Sensitive OTP & 2FA Protection**:
-  - Built-in heuristic filter detecting authentication tokens, one-time passwords, and verification codes in English, Persian, and Arabic.
-  - Blocks sensitive credentials from forwarding by default unless explicitly toggled off.
-- **Robust Background Operation**:
-  - **Stay Alive**: Persistent Android foreground service holding a wake lock during processing.
-  - **Auto Start**: Optional boot recovery (`ACTION_BOOT_COMPLETED`) resuming forwarding after device reboot.
-  - Exponential backoff delivery queue with duplicate suppression (SHA-256 message hashing).
-- **10-Step Interactive Spotlight Tour**:
-  - First-launch interactive walkthrough explaining every feature and control.
-  - Replayable on demand from Settings.
+<br/><br/>
+
+**[ DOWNLOAD ](https://github.com/Sefeshki/VANTA/releases/latest) · [ SOURCE CODE ](https://github.com/Sefeshki/VANTA) · [ DEVELOPER ](https://github.com/Sefeshki)**
+
+</div>
 
 ---
 
-## 📱 Telegram Message Format
+<div align="center">
 
-### Incoming SMS Notification
+### ◈ WHAT'S VANTA?
+
+</div>
+
+Got an old Android phone sitting around? Give it a job.
+
+VANTA connects your Android device to your own Telegram bot and forwards incoming SMS messages directly to your Telegram account.
+
+No separate server to maintain. No third-party forwarding platform. Your phone handles the bridge.
+
+### ✦ WHAT'S INSIDE?
+
+<table>
+<tr>
+<td width="50%">
+
+<h3>◉ SMS BRIDGE</h3>
+
+- Automatic incoming SMS forwarding
+- Dual-SIM identification
+- SIM1 / SIM2 / Both filtering
+- Duplicate message protection
+- Background forwarding service
+
+</td>
+<td width="50%">
+
+<h3>◈ TELEGRAM</h3>
+
+- Your own Telegram bot
+- Direct Telegram Bot API connection
+- Secure bot pairing
+- Interactive bot controls
+- Custom emoji support
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+<h3>⌘ PRIVACY</h3>
+
+- Android Keystore encryption
+- AES-256-GCM credential protection
+- OTP and verification-code filtering
+- Authorized Telegram user checks
+- Credential cleanup on disconnect
+
+</td>
+<td width="50%">
+
+<h3>⚡ SYSTEM</h3>
+
+- Live service monitoring
+- Connection diagnostics
+- Automatic startup option
+- Battery optimization guidance
+- Interactive first-launch tutorial
+
+</td>
+</tr>
+</table>
+
+### ◈ YOUR PHONE DOES THE WORK
+
+VANTA runs on your Android device.
+
 ```text
-⚡ New Message (SIM1):
-By: +12025550198
-
-⚡ context:
-Your order has shipped with tracking number AB123456789.
-
-━━━━━━━━━━━━━━━━━━━━
-[ GitHub Button ]
+       YOUR ANDROID PHONE
+      ┌──────────────────┐
+      │                  │
+      │     SIM CARD     │
+      │        │         │
+      │        ▼         │
+      │    INCOMING SMS  │
+      │        │         │
+      │        ▼         │
+      │      VANTA       │
+      │        │         │
+      └────────┼─────────┘
+               │
+               │ HTTPS
+               ▼
+       TELEGRAM BOT API
+               │
+               ▼
+        YOUR TELEGRAM
 ```
 
-### `/start` Live Status Response
-```text
-Activation: ⚡ ONLINE
+VANTA communicates directly with the official Telegram Bot API. It does not require a separate forwarding server.
 
-Active Numbers:
-⚡ SIM1 (T-Mobile): +12025550198
-⚡ SIM2 (Irancell): NUMBER UNAVAILABLE
+**A little network reality:** SMS reception happens on the phone, but delivering messages to Telegram requires an internet connection. Local settings and parts of the application remain usable offline.
 
-━━━━━━━━━━━━━━━━━━━━
-[ GitHub Button ]
-```
+### ◈ SECURITY IS NOT AN AFTERTHOUGHT
 
----
+- Bot credentials are protected using Android Keystore-backed AES-256-GCM encryption.
+- Telegram communication uses HTTPS.
+- Telegram commands are restricted to authorized users.
+- OTP and authentication-code detection helps prevent sensitive verification messages from being forwarded.
+- VANTA does not provide remote shell execution.
 
-## 🚀 Quick Start & Setup Guide
+Your SMS messages are intentionally transmitted to the Telegram destination you configure. Keep your bot token private and only authorize people you trust.
 
-### 1. Create your Telegram Bot
-1. Open Telegram and search for `@BotFather`.
-2. Send `/newbot` and follow the prompts to choose a display name and username.
-3. Copy your HTTP API token (e.g. `123456789:ABCdefGhIJKlmNoPQRstuVWXyz`).
+### ◈ GETTING STARTED
 
-### 2. Configure VANTA on your Secondary Phone
-1. Launch **VANTA**.
-2. Open **TELEGRAM SETUP**.
-3. Paste your Bot Token and tap **VERIFY TOKEN**.
-4. Tap **GENERATE CODE** to produce a secure 6-digit expiring pairing code.
-5. In Telegram, open your bot chat and send:
-   ```text
-   /start <YOUR_6_DIGIT_CODE>
-   ```
-6. VANTA will automatically detect the authorized pairing and verify the connection.
+**1 — Create your bot**
 
-### 3. Grant Permissions & Enable Forwarding
-1. Navigate to **PERMISSION CENTER** and grant:
-   - **SMS Reception** (`RECEIVE_SMS`)
-   - **Notifications** (`POST_NOTIFICATIONS`)
-   - **Phone State** (`READ_PHONE_STATE` for dual-SIM carrier names)
-   - **Battery Optimization** (Whitelisted for 24/7 background operation)
-2. Return to the dashboard and tap the master **ACTIVE** toggle.
+Open [@BotFather](https://t.me/BotFather) in Telegram.
 
----
+Send `/newbot`, choose a name and username, then copy your API token.
 
-## 🛡️ Security Architecture & Threat Model
+**2 — Connect VANTA**
 
-1. **Android Keystore AES-256-GCM**: Credentials never reside in plaintext on disk.
-2. **Direct HTTPS Endpoint**: All requests communicate directly with official Telegram Bot API servers over TLS 1.3/1.2.
-3. **Authorized User Gate**: Unauthorized Telegram users sending commands receive an authorization error and never receive device information or SMS contents.
-4. **No Arbitrary Remote Execution**: VANTA does not execute shell commands or remote scripts from Telegram.
-5. **Transparency**: All system actions appear in the Cyber Terminal.
+- Install VANTA on your Android phone.
+- Open Telegram Setup.
+- Paste your bot token.
+- Verify the token.
+- Generate your pairing code.
+- Open your bot and send `/start YOUR_CODE`.
 
----
+**3 — Give VANTA permission**
 
-## 🧪 Testing
+Open Permission Center and grant the required SMS, notification, and phone-state permissions.
 
-VANTA includes Robolectric and local JVM unit tests covering:
-- Telegram Custom Emoji UTF-16 entity offset calculations
-- Dual-SIM slot parsing and `/start` status formatting
-- Multi-language SMS content preservation (Persian, Arabic, English, RTL, LTR)
-- OTP and authentication code detection patterns
-- In-memory event log sanitization (credential and OTP redaction)
+Configure your SIM filtering and battery settings.
 
-Run the test suite with:
+**4 — Activate**
+
+Return to the Dashboard and enable forwarding.
+
+That's it. Your phone is now your SMS bridge.
+
+### ◈ BUILT WITH
+
+<img src="https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white" />
+<img src="https://img.shields.io/badge/Jetpack_Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white" />
+<img src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white" />
+<img src="https://img.shields.io/badge/Telegram_Bot_API-26A5E4?style=flat-square&logo=telegram&logoColor=white" />
+
+### ◈ TESTING
+
+VANTA includes tests covering:
+
+- Telegram custom emoji UTF-16 offsets.
+- Dual-SIM identification and status formatting.
+- Persian, Arabic, English, and RTL/LTR text handling.
+- OTP detection patterns.
+- Sensitive information redaction in event logs.
+
+Run the local unit tests:
+
 ```bash
 gradle :app:testDebugUnitTest
 ```
 
+### ◈ LICENSE
+
+VANTA is released under the **MIT License**.
+
+See [LICENSE](LICENSE) for the full license text.
+
 ---
 
-## 📄 License & Attribution
+<div align="center">
 
-Created by **Sefeshki**  
-GitHub: [https://github.com/Sefeshki/](https://github.com/Sefeshki/)  
-Licensed under the **MIT License**. See `LICENSE` for details.
+<img src="https://capsule-render.vercel.app/api?type=rect&height=100&color=0:050505,50:24004f,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&animation=fadeIn" width="100%" />
+
+**MADE BY [SEFESHKI](https://github.com/Sefeshki)**
+
+[GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
+
+<sub>VANTA — Your device. Your connection. Your control.</sub>
+
+</div>
