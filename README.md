@@ -165,13 +165,8 @@ See LICENSE for the full license text.
 
 <img src="https://capsule-render.vercel.app/api?type=waving&height=180&color=0:050505,20:16002d,50:4c1d95,80:16002d,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=30&fontAlignY=50&animation=fadeIn&stroke=8b5cf6&strokeWidth=1" width="100%" />
 
-**MADE BY [SEFESHKI](https://github.com/Sefeshki)**
+<div align="center">
 
-[GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
-
-<sub>VANTA — Your device. Your connection. Your control.</sub>
-
-</div>
 **MADE BY [SEFESHKI](https://github.com/Sefeshki)**
 
 [GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
