@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,8 +28,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -55,14 +56,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.BuildConfig
+import com.example.R
 import com.example.core.UpdateState
 import com.example.data.model.AppPreferences
 import com.example.data.model.SimSelectionMode
@@ -71,7 +76,6 @@ import com.example.ui.components.GithubStarButton
 import com.example.ui.components.GlowCard
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
-import com.example.ui.components.VantaBlackHoleEmblem
 import com.example.ui.theme.LocalVantaColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -105,7 +109,7 @@ fun BoxScope.RightNavigationOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.56f))
+                .background(Color.Black.copy(alpha = 0.36f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -152,7 +156,7 @@ fun BoxScope.RightNavigationOverlay(
                 )
                 .testTag("nav_drawer_content"),
             shape = overlayShape,
-            color = Color(0xD608080A),
+            color = Color(0xCF020203),
             tonalElevation = 0.dp
         ) {
             Column(
@@ -161,50 +165,24 @@ fun BoxScope.RightNavigationOverlay(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.09f),
-                                Color.White.copy(alpha = 0.02f),
-                                Color.White.copy(alpha = 0.04f)
+                                Color.White.copy(alpha = 0.03f),
+                                Color.Black.copy(alpha = 0.14f),
+                                Color.White.copy(alpha = 0.02f)
                             )
                         )
                     )
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.End))
+                    .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.End))
                     .padding(bottom = 16.dp)
             ) {
-                // Menu Header aligned vertically with the morphed hamburger close icon at top-right
+                // Top row aligned cleanly with the morphed close icon at top-right
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 48.dp)
                         .padding(start = 20.dp, end = closeButtonReservedWidth),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        VantaBlackHoleEmblem(
-                            modifier = Modifier.size(40.dp),
-                            animate = isOpen
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "VANTA",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 2.sp
-                                ),
-                                color = Color.White
-                            )
-                            Text(
-                                text = "SMS Bridge",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace
-                                ),
-                                color = colors.textMuted
-                            )
-                        }
-                    }
-
                     if (updateState is UpdateState.UpdateAvailable) {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
@@ -239,7 +217,7 @@ fun BoxScope.RightNavigationOverlay(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Column(
                     modifier = Modifier
@@ -307,9 +285,54 @@ fun BoxScope.RightNavigationOverlay(
                         },
                         testTag = "drawer_nav_tutorial"
                     )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Centered Drawer Branding stacked below Quick Tour
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .testTag("drawer_branding_section"),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.vanta_icon),
+                            contentDescription = "VANTA",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .size(60.dp)
+                                .testTag("drawer_branding_logo")
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "VANTA",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 3.sp
+                            ),
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Your phone. Your SIM. Your Telegram.",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = 0.25.sp,
+                                lineHeight = 13.sp
+                            ),
+                            color = colors.textMuted.copy(alpha = 0.78f),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Bottom Menu Branding (No author name; Source Available)
                 Column(

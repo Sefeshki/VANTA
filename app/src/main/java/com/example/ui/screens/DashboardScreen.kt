@@ -9,8 +9,12 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -19,13 +23,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -34,16 +41,12 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.SimCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +58,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
@@ -92,10 +102,13 @@ import com.example.ui.components.SpotlightTutorialOverlay
 import com.example.ui.components.StatusDot
 import com.example.ui.components.UpdateDialog
 import com.example.ui.components.VpnToggleSwitch
+import com.example.ui.components.createBlurredBackdrop
 import com.example.ui.theme.LocalVantaColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onNavigateToSims: () -> Unit,
@@ -173,12 +186,39 @@ fun DashboardScreen(
 
     val isBridgeRunning = prefs.isForwardingEnabled && isServiceRunning
 
-    // Subtle backdrop blur on Android 12+ only while menu overlay is open
+    val useNativeBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+    // ~80% genuine GPU RenderEffect blur on Android 12+ when drawer is open
     val backdropBlur by animateDpAsState(
-        targetValue = if (isDrawerOpen) 10.dp else 0.dp,
-        animationSpec = tween(durationMillis = 280),
+        targetValue = if (useNativeBlur && isDrawerOpen) 30.dp else 0.dp,
+        animationSpec = tween(durationMillis = 260),
         label = "drawerBackdropBlur"
     )
+
+    // Efficient one-shot downscaled multi-pass blur fallback for Android 7–11 (API < 31)
+    val dashboardGraphicsLayer = rememberGraphicsLayer()
+    var fallbackBlurredBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    LaunchedEffect(isDrawerOpen, useNativeBlur) {
+        if (!useNativeBlur) {
+            if (isDrawerOpen) {
+                try {
+                    val captured = dashboardGraphicsLayer.toImageBitmap()
+                    val blurred = withContext(Dispatchers.Default) {
+                        createBlurredBackdrop(captured, downscaleFactor = 8, radius = 10)
+                    }
+                    fallbackBlurredBitmap = blurred
+                } catch (_: Throwable) {
+                    fallbackBlurredBitmap = null
+                }
+            } else {
+                delay(280)
+                if (!isDrawerOpen) {
+                    fallbackBlurredBitmap = null
+                }
+            }
+        }
+    }
 
     val density = LocalDensity.current
     var rootWindowOffset by remember { mutableStateOf(Offset.Zero) }
@@ -207,60 +247,34 @@ fun DashboardScreen(
                     rootWidthPx = coords.size.width
                 }
         ) {
-            // Underlying App Layout (Scaffold + TopAppBar)
-            Scaffold(
-                containerColor = Color.Transparent,
+            // Underlying Fullscreen Dashboard Content (blurred when menu overlay is open)
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && backdropBlur > 0.dp) {
-                            Modifier.blur(backdropBlur)
-                        } else Modifier
-                    ),
-                topBar = {
-                    TopAppBar(
-                        title = { /* Clean minimal header: no VANTA name or icon outside menu */ },
-                        actions = {
-                            IconButton(
-                                onClick = onNavigateToPermissions,
-                                modifier = Modifier.testTag("dashboard_nav_permissions")
-                            ) {
-                                val hasSms = ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.RECEIVE_SMS
-                                ) == PackageManager.PERMISSION_GRANTED
-                                Icon(
-                                    imageVector = Icons.Outlined.Security,
-                                    contentDescription = "Permissions",
-                                    tint = if (hasSms) colors.success else colors.warning
-                                )
+                        if (useNativeBlur) {
+                            if (backdropBlur > 0.dp) {
+                                Modifier.blur(backdropBlur, edgeTreatment = BlurredEdgeTreatment.Rectangle)
+                            } else Modifier
+                        } else {
+                            Modifier.drawWithContent {
+                                dashboardGraphicsLayer.record {
+                                    this@drawWithContent.drawContent()
+                                }
+                                drawLayer(dashboardGraphicsLayer)
                             }
-                            // Reserve exact 48.dp slot in TopAppBar for the animated hamburger / drawer close icon
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .onGloballyPositioned { coords ->
-                                        hamburgerWindowOffset = coords.positionInWindow()
-                                        hasMeasuredHamburger = true
-                                    }
-                            )
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent
-                        )
+                        }
                     )
-                }
-            ) { innerPadding ->
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 18.dp, vertical = 4.dp)
+                        .padding(horizontal = 18.dp)
                 ) {
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(44.dp))
 
-                    // 1. WHITE ENERGY CORE POWER SWITCH (Vertically centered between TopAppBar & StatusPanel)
+                    // 1. WHITE ENERGY CORE POWER SWITCH (Centered in upper space above StatusPanel)
                     VpnToggleSwitch(
                         isActive = isBridgeRunning,
                         onToggle = {
@@ -641,7 +655,59 @@ fun DashboardScreen(
                         onClear = { EventLogger.clear() }
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                }
+
+                // Floating top-right controls without a bulky top bar or container
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 10.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onNavigateToPermissions,
+                        modifier = Modifier.testTag("dashboard_nav_permissions")
+                    ) {
+                        val hasSms = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECEIVE_SMS
+                        ) == PackageManager.PERMISSION_GRANTED
+                        Icon(
+                            imageVector = Icons.Outlined.Security,
+                            contentDescription = "Permissions",
+                            tint = if (hasSms) colors.success else colors.warning
+                        )
+                    }
+                    // Exact 48.dp anchor slot for the animated hamburger / drawer close icon
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .onGloballyPositioned { coords ->
+                                hamburgerWindowOffset = coords.positionInWindow()
+                                hasMeasuredHamburger = true
+                            }
+                    )
+                }
+            }
+
+            // Genuinely blurred opaque backdrop layer for Android < 12 (API < 31)
+            if (!useNativeBlur) {
+                AnimatedVisibility(
+                    visible = isDrawerOpen && fallbackBlurredBitmap != null,
+                    enter = fadeIn(tween(220)),
+                    exit = fadeOut(tween(200))
+                ) {
+                    fallbackBlurredBitmap?.let { blurredBmp ->
+                        Image(
+                            bitmap = blurredBmp,
+                            contentDescription = null,
+                            contentScale = ContentScale.FillBounds,
+                            filterQuality = FilterQuality.High,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 

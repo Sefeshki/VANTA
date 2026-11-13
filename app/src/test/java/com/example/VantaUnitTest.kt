@@ -1,6 +1,8 @@
 package com.example
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import com.example.core.EventLogger
 import com.example.data.model.LogCategory
 import com.example.data.model.SimCardInfo
@@ -421,5 +423,39 @@ class VantaUnitTest {
             inflatedCompact.findViewById<android.view.View>(R.id.widget_header_row).visibility
         )
     }
-}
 
+    @Test
+    fun testFallbackBackdropBlurDiffusesHighlights() {
+        val w = 160
+        val h = 160
+        val srcBitmap = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        // Transparent background with a bright white square in the center
+        for (y in 60 until 100) {
+            for (x in 60 until 100) {
+                srcBitmap.setPixel(x, y, android.graphics.Color.WHITE)
+            }
+        }
+
+        val blurred = com.example.ui.components.createBlurredBackdrop(
+            source = srcBitmap.asImageBitmap(),
+            downscaleFactor = 8,
+            radius = 4
+        )
+        assertEquals(20, blurred.width)
+        assertEquals(20, blurred.height)
+        val outBmp = blurred.asAndroidBitmap()
+        assertEquals(0xFF, android.graphics.Color.alpha(outBmp.getPixel(10, 10)))
+
+        // Verify pixel diffusion on an explicit pixel buffer
+        val pixels = IntArray(20 * 20) { android.graphics.Color.BLACK }
+        pixels[10 * 20 + 10] = android.graphics.Color.WHITE
+        com.example.ui.components.applySeparableBoxBlur(pixels, 20, 20, radius = 3, passes = 3)
+
+        val centerRed = (pixels[10 * 20 + 10] ushr 16) and 0xFF
+        val neighborRed = (pixels[10 * 20 + 12] ushr 16) and 0xFF
+        val centerAlpha = (pixels[10 * 20 + 10] ushr 24) and 0xFF
+        assertEquals(0xFF, centerAlpha)
+        assertTrue("Center peak should soften substantially", centerRed < 128)
+        assertTrue("Highlight should spread into neighboring pixels", neighborRed > 0)
+    }
+}

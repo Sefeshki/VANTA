@@ -1,7 +1,9 @@
 package com.example
 
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -12,7 +14,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -33,22 +40,64 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
+        applyImmersiveFullscreen()
         val app = applicationContext as VantaApplication
 
         setContent {
             MyApplicationTheme {
-                VantaAppNavHost(app = app)
+                VantaAppNavHost(
+                    app = app,
+                    onReapplyFullscreen = ::applyImmersiveFullscreen
+                )
             }
         }
+        window.decorView.post { applyImmersiveFullscreen() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyImmersiveFullscreen()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            applyImmersiveFullscreen()
+        }
+    }
+
+    private fun applyImmersiveFullscreen() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val params = window.attributes
+            if (params.layoutInDisplayCutoutMode != WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES) {
+                params.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                window.attributes = params
+            }
+        }
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        insetsController.hide(WindowInsetsCompat.Type.statusBars())
     }
 }
 
 @Composable
 fun VantaAppNavHost(
     app: VantaApplication,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReapplyFullscreen: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, _, _ ->
+            onReapplyFullscreen()
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
 
     NavHost(
         navController = navController,
