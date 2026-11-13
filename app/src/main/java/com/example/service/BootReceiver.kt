@@ -7,6 +7,7 @@ import com.example.VantaApplication
 import com.example.core.EventLogger
 import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
+import com.example.widget.VantaWidgetUpdater
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -39,5 +40,7 @@ class BootReceiver : BroadcastReceiver() {
                 LogLevel.INFO
             )
         }
+
+        VantaWidgetUpdater.updateAllWidgets(context, force = true)
     }
 }

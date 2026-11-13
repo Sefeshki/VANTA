@@ -9,13 +9,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-enum class VantaThemeId(val displayName: String, val primaryColorHex: Long) {
-    PURPLE("Purple", 0xFFA855F7),
-    RED("Red", 0xFFEF4444),
-    BLUE("Blue", 0xFF3B82F6),
-    CYAN("Cyan", 0xFF06B6D4)
-}
-
 @Immutable
 data class VantaColors(
     val background: Color,
@@ -37,47 +30,39 @@ data class VantaColors(
     val info: Color
 )
 
+private val MonochromeVantaColors = VantaColors(
+    background = VantaBackground,
+    secondaryBackground = VantaSecondaryBackground,
+    surface = VantaSurface,
+    surfaceElevated = VantaSurfaceElevated,
+    border = VantaBorder,
+    borderGlow = VantaBorderGlow,
+    primary = MonochromePrimary,
+    primaryBright = MonochromeBright,
+    primaryGlow = MonochromeGlow,
+    primaryDark = MonochromeDark,
+    textPrimary = VantaTextPrimary,
+    textSecondary = VantaTextSecondary,
+    textMuted = VantaTextMuted,
+    success = VantaSuccess,
+    warning = VantaWarning,
+    error = VantaError,
+    info = VantaInfo
+)
+
 val LocalVantaColors = staticCompositionLocalOf {
-    getVantaColors(VantaThemeId.PURPLE)
+    MonochromeVantaColors
 }
 
-fun getVantaColors(themeId: VantaThemeId): VantaColors {
-    val (primary, bright, glow, dark) = when (themeId) {
-        VantaThemeId.PURPLE -> Quad(PurplePrimary, PurpleBright, PurpleGlow, PurpleDark)
-        VantaThemeId.RED -> Quad(RedPrimary, RedBright, RedGlow, RedDark)
-        VantaThemeId.BLUE -> Quad(BluePrimary, BlueBright, BlueGlow, BlueDark)
-        VantaThemeId.CYAN -> Quad(CyanPrimary, CyanBright, CyanGlow, CyanDark)
-    }
-    return VantaColors(
-        background = VantaBackground,
-        secondaryBackground = VantaSecondaryBackground,
-        surface = VantaSurface,
-        surfaceElevated = VantaSurfaceElevated,
-        border = VantaBorder,
-        borderGlow = glow.copy(alpha = 0.45f),
-        primary = primary,
-        primaryBright = bright,
-        primaryGlow = glow,
-        primaryDark = dark,
-        textPrimary = VantaTextPrimary,
-        textSecondary = VantaTextSecondary,
-        textMuted = VantaTextMuted,
-        success = VantaSuccess,
-        warning = VantaWarning,
-        error = VantaError,
-        info = VantaInfo
-    )
-}
+fun getVantaColors(): VantaColors = MonochromeVantaColors
 
-private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
-fun getMaterialColorScheme(colors: VantaColors): ColorScheme {
+fun getMaterialColorScheme(colors: VantaColors = MonochromeVantaColors): ColorScheme {
     return darkColorScheme(
         primary = colors.primary,
         onPrimary = Color.Black,
         primaryContainer = colors.primaryDark,
         onPrimaryContainer = colors.primaryBright,
-        secondary = colors.primaryBright,
+        secondary = colors.primaryGlow,
         onSecondary = Color.Black,
         background = colors.background,
         onBackground = colors.textPrimary,
@@ -93,10 +78,9 @@ fun getMaterialColorScheme(colors: VantaColors): ColorScheme {
 
 @Composable
 fun MyApplicationTheme(
-    themeId: VantaThemeId = VantaThemeId.PURPLE,
     content: @Composable () -> Unit
 ) {
-    val vantaColors = getVantaColors(themeId)
+    val vantaColors = MonochromeVantaColors
     val colorScheme = getMaterialColorScheme(vantaColors)
 
     CompositionLocalProvider(LocalVantaColors provides vantaColors) {

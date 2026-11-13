@@ -77,6 +77,21 @@
             </intent-filter>
         </receiver>
 
+        <!-- Home Screen Live Status Widget -->
+        <receiver
+            android:name=".widget.VantaStatusWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_status_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/vanta_status_widget_info" />
+        </receiver>
+
         <!-- FileProvider for installing downloaded APK updates -->
         <provider
             android:name="androidx.core.content.FileProvider"

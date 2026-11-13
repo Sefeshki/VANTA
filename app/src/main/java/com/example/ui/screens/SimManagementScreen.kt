@@ -1,14 +1,13 @@
 package com.example.ui.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,17 +21,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SimCard
-import androidx.compose.material.icons.filled.SimCardAlert
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SimCard
+import androidx.compose.material.icons.outlined.SimCardAlert
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -64,7 +62,6 @@ import com.example.data.model.SimSelectionMode
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
 import com.example.ui.components.LiquidGlassCard
-import com.example.ui.components.StatusDot
 import com.example.ui.theme.LocalVantaColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +102,7 @@ fun SimManagementScreen(
                             modifier = Modifier.testTag("sim_back_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = "Back",
                                 tint = colors.textPrimary
                             )
@@ -120,9 +117,9 @@ fun SimManagementScreen(
                             modifier = Modifier.testTag("sim_refresh_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = Icons.Outlined.Refresh,
                                 contentDescription = "Refresh SIMs",
-                                tint = colors.primaryBright
+                                tint = Color.White
                             )
                         }
                     },
@@ -130,153 +127,148 @@ fun SimManagementScreen(
                 )
             }
         ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Text(
-                text = "DETECTED SIM CARDS",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = "DETECTED SIM CARDS",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-            // Display detected SIMs
-            if (sims.isEmpty()) {
-                GlowCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.SimCardAlert,
-                            contentDescription = null,
-                            tint = colors.warning,
-                            modifier = Modifier.size(24.dp)
+                if (sims.isEmpty()) {
+                    GlowCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.SimCardAlert,
+                                contentDescription = null,
+                                tint = colors.warning,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "No SIM cards found. Check if your SIM is inserted properly and phone permissions are granted.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textSecondary
+                            )
+                        }
+                    }
+                } else {
+                    sims.forEach { sim ->
+                        SimSlotCard(
+                            sim = sim,
+                            isSelectedInCurrentMode = when (selectedMode) {
+                                SimSelectionMode.ALL -> true
+                                SimSelectionMode.SIM1_ONLY -> sim.slotIndex == 0
+                                SimSelectionMode.SIM2_ONLY -> sim.slotIndex == 1
+                                SimSelectionMode.NONE -> false
+                            }
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = "WHICH SIMS SHOULD WE FORWARD?",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                SelectionModeCard(
+                    mode = SimSelectionMode.ALL,
+                    title = "Both SIM Cards",
+                    subtitle = "Forward messages arriving on either SIM 1 or SIM 2",
+                    isSelected = selectedMode == SimSelectionMode.ALL,
+                    onClick = { selectedMode = SimSelectionMode.ALL }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                SelectionModeCard(
+                    mode = SimSelectionMode.SIM1_ONLY,
+                    title = "SIM 1 Only",
+                    subtitle = "Only forward messages received on your primary SIM",
+                    isSelected = selectedMode == SimSelectionMode.SIM1_ONLY,
+                    onClick = { selectedMode = SimSelectionMode.SIM1_ONLY }
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                SelectionModeCard(
+                    mode = SimSelectionMode.SIM2_ONLY,
+                    title = "SIM 2 Only",
+                    subtitle = "Only forward messages received on your secondary SIM",
+                    isSelected = selectedMode == SimSelectionMode.SIM2_ONLY,
+                    onClick = { selectedMode = SimSelectionMode.SIM2_ONLY }
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                LiquidGlassCard(
+                    contentPadding = PaddingValues(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "No SIM cards found. Check if your SIM is inserted properly and phone permissions are granted.",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Your carrier controls whether the phone number shows up here. If it says 'NUMBER UNAVAILABLE', don't worry—VANTA still forwards your texts without a hitch using the hardware slot.",
+                            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                             color = colors.textSecondary
                         )
                     }
                 }
-            } else {
-                sims.forEach { sim ->
-                    SimSlotCard(
-                        sim = sim,
-                        isSelectedInCurrentMode = when (selectedMode) {
-                            SimSelectionMode.ALL -> true
-                            SimSelectionMode.SIM1_ONLY -> sim.slotIndex == 0
-                            SimSelectionMode.SIM2_ONLY -> sim.slotIndex == 1
-                            SimSelectionMode.NONE -> false
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "WHICH SIMS SHOULD WE FORWARD?",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Selection Mode Cards
-            SelectionModeCard(
-                mode = SimSelectionMode.ALL,
-                title = "Both SIM Cards",
-                subtitle = "Forward messages arriving on either SIM 1 or SIM 2",
-                isSelected = selectedMode == SimSelectionMode.ALL,
-                onClick = { selectedMode = SimSelectionMode.ALL }
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SelectionModeCard(
-                mode = SimSelectionMode.SIM1_ONLY,
-                title = "SIM 1 Only",
-                subtitle = "Only forward messages received on your primary SIM",
-                isSelected = selectedMode == SimSelectionMode.SIM1_ONLY,
-                onClick = { selectedMode = SimSelectionMode.SIM1_ONLY }
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SelectionModeCard(
-                mode = SimSelectionMode.SIM2_ONLY,
-                title = "SIM 2 Only",
-                subtitle = "Only forward messages received on your secondary SIM",
-                isSelected = selectedMode == SimSelectionMode.SIM2_ONLY,
-                onClick = { selectedMode = SimSelectionMode.SIM2_ONLY }
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Informational Notice on Phone Number Availability
-            LiquidGlassCard(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.Top
+                Button(
+                    onClick = {
+                        app.simManager.applySelectionMode(selectedMode)
+                        Toast.makeText(context, "Saved: ${selectedMode.label}", Toast.LENGTH_SHORT).show()
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .testTag("confirm_sim_selection_btn")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = colors.info,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Your carrier controls whether the phone number shows up here. If it says 'NUMBER UNAVAILABLE', don't worry—VANTA still forwards your texts without a hitch using the hardware slot.",
-                        style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                        color = colors.textSecondary
+                        text = "SAVE SELECTION",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
                     )
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    app.simManager.applySelectionMode(selectedMode)
-                    Toast.makeText(context, "Saved: ${selectedMode.label}", Toast.LENGTH_SHORT).show()
-                    onNavigateBack()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primary,
-                    contentColor = Color.Black
-                ),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .testTag("confirm_sim_selection_btn")
-            ) {
-                Text(
-                    text = "SAVE SELECTION",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
-    }
     }
 }
 
@@ -290,7 +282,9 @@ private fun SimSlotCard(
 
     GlowCard(
         isHighlighted = isSelectedInCurrentMode,
-        modifier = Modifier.fillMaxWidth().testTag("sim_slot_card_${sim.slotIndex}")
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("sim_slot_card_${sim.slotIndex}")
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
@@ -303,14 +297,19 @@ private fun SimSlotCard(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(if (sim.isAvailable) colors.primaryDark else colors.surfaceElevated),
+                            .background(Color.White.copy(alpha = if (sim.isAvailable) 0.10f else 0.04f))
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = if (sim.isAvailable) 0.24f else 0.10f),
+                                CircleShape
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.SimCard,
+                            imageVector = Icons.Outlined.SimCard,
                             contentDescription = null,
-                            tint = if (sim.isAvailable) colors.primaryBright else colors.textMuted,
-                            modifier = Modifier.size(20.dp)
+                            tint = if (sim.isAvailable) Color.White else colors.textMuted,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -323,7 +322,7 @@ private fun SimSlotCard(
                         Text(
                             text = sim.carrierName,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = colors.primaryBright
+                            color = colors.textSecondary
                         )
                     }
                 }
@@ -331,7 +330,12 @@ private fun SimSlotCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSelectedInCurrentMode) colors.primaryDark else colors.surfaceElevated)
+                        .background(Color.White.copy(alpha = if (isSelectedInCurrentMode) 0.12f else 0.04f))
+                        .border(
+                            1.dp,
+                            Color.White.copy(alpha = if (isSelectedInCurrentMode) 0.34f else 0.12f),
+                            RoundedCornerShape(6.dp)
+                        )
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
@@ -340,7 +344,7 @@ private fun SimSlotCard(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         ),
-                        color = if (isSelectedInCurrentMode) colors.primaryBright else colors.textMuted
+                        color = if (isSelectedInCurrentMode) Color.White else colors.textMuted
                     )
                 }
             }
@@ -382,14 +386,14 @@ private fun SelectionModeCard(
 
     val strokeBrush = Brush.linearGradient(
         colors = listOf(
-            if (isSelected) colors.primaryBright.copy(alpha = 0.8f) else colors.border.copy(alpha = 0.5f),
-            if (isSelected) colors.primaryGlow.copy(alpha = 0.4f) else colors.border.copy(alpha = 0.2f),
-            colors.border.copy(alpha = 0.3f)
+            Color.White.copy(alpha = if (isSelected) 0.58f else 0.16f),
+            Color.White.copy(alpha = if (isSelected) 0.20f else 0.06f),
+            Color.White.copy(alpha = if (isSelected) 0.42f else 0.12f)
         )
     )
 
     Surface(
-        color = if (isSelected) colors.primaryDark.copy(alpha = 0.35f) else Color(0xCC0D0B18),
+        color = if (isSelected) Color(0xCC111114) else Color(0xB8070709),
         shape = shape,
         modifier = Modifier
             .fillMaxWidth()
@@ -409,7 +413,7 @@ private fun SelectionModeCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (isSelected) colors.textPrimary else colors.textSecondary
+                    color = if (isSelected) Color.White else colors.textSecondary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -420,9 +424,9 @@ private fun SelectionModeCard(
             }
 
             Icon(
-                imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                imageVector = if (isSelected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                 contentDescription = null,
-                tint = if (isSelected) colors.primaryBright else colors.textMuted,
+                tint = if (isSelected) Color.White else colors.textMuted,
                 modifier = Modifier.size(24.dp)
             )
         }

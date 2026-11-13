@@ -19,6 +19,7 @@ import com.example.core.EventLogger
 import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
 import com.example.data.model.SimSelectionMode
+import com.example.widget.VantaWidgetUpdater
 
 class VantaForegroundService : Service() {
 
@@ -42,6 +43,8 @@ class VantaForegroundService : Service() {
                 EventLogger.log(LogCategory.SERVICE, "Stopping VANTA Foreground Service by user action", LogLevel.INFO)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(false)
+                app?.setServiceRunning(false)
+                VantaWidgetUpdater.updateAllWidgets(this, force = true)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -52,6 +55,7 @@ class VantaForegroundService : Service() {
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(false)
                 updateNotification()
+                VantaWidgetUpdater.updateAllWidgets(this)
                 return START_STICKY
             }
             ACTION_RESUME -> {
@@ -60,6 +64,7 @@ class VantaForegroundService : Service() {
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(true)
                 updateNotification()
+                VantaWidgetUpdater.updateAllWidgets(this)
                 return START_STICKY
             }
             else -> {
@@ -84,6 +89,7 @@ class VantaForegroundService : Service() {
         }
         val app = applicationContext as? VantaApplication
         app?.setServiceRunning(true)
+        VantaWidgetUpdater.updateAllWidgets(this)
         EventLogger.log(LogCategory.SERVICE, "VANTA Foreground Service ACTIVE and running", LogLevel.SUCCESS)
     }
 

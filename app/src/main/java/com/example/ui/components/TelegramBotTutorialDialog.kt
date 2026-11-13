@@ -31,14 +31,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -98,12 +98,12 @@ fun TelegramBotTutorialDialog(
             dismissOnClickOutside = true
         )
     ) {
-        val shape = RoundedCornerShape(22.dp)
+        val shape = RoundedCornerShape(24.dp)
         val strokeBrush = Brush.linearGradient(
             colors = listOf(
-                colors.primaryBright.copy(alpha = 0.65f),
-                colors.primaryGlow.copy(alpha = 0.35f),
-                colors.border.copy(alpha = 0.30f)
+                Color.White.copy(alpha = 0.50f),
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.28f)
             )
         )
 
@@ -113,18 +113,18 @@ fun TelegramBotTutorialDialog(
                 .scale(dialogScale.value)
                 .alpha(dialogAlpha.value)
                 .clip(shape)
-                .border(1.2.dp, strokeBrush, shape)
+                .border(1.dp, strokeBrush, shape)
                 .testTag("telegram_bot_tutorial_dialog"),
             shape = shape,
-            color = Color(0xF20D0B18)
+            color = Color(0xEB070709)
         ) {
             Box(
                 modifier = Modifier
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                colors.primaryDark.copy(alpha = 0.30f),
-                                Color(0x0A0D0B18)
+                                Color.White.copy(alpha = 0.08f),
+                                Color.Transparent
                             )
                         )
                     )
@@ -146,14 +146,15 @@ fun TelegramBotTutorialDialog(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(colors.primaryDark),
+                                    .background(Color.White.copy(alpha = 0.10f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Send,
+                                    imageVector = Icons.AutoMirrored.Outlined.Send,
                                     contentDescription = null,
-                                    tint = colors.primaryBright,
-                                    modifier = Modifier.size(18.dp)
+                                    tint = Color.White,
+                                    modifier = Modifier.size(17.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(10.dp))
@@ -164,18 +165,18 @@ fun TelegramBotTutorialDialog(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.sp
                                 ),
-                                color = colors.primaryBright
+                                color = Color.White
                             )
                         }
 
                         IconButton(
                             onClick = onDismiss,
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(36.dp)
                                 .testTag("close_bot_tutorial_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
+                                imageVector = Icons.Rounded.Close,
                                 contentDescription = "Close",
                                 tint = colors.textMuted
                             )
@@ -260,7 +261,7 @@ fun TelegramBotTutorialDialog(
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Icon(imageVector = Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(imageVector = Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("OPEN @BotFather IN TELEGRAM", fontWeight = FontWeight.Bold)
                                     }
@@ -285,12 +286,12 @@ fun TelegramBotTutorialDialog(
                                             clipboard.setPrimaryClip(clip)
                                             Toast.makeText(context, "Command '/newbot' copied to clipboard", Toast.LENGTH_SHORT).show()
                                         },
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primaryBright),
-                                        border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.5f)),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(imageVector = Icons.Outlined.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("COPY /newbot TO CLIPBOARD")
                                     }
@@ -343,8 +344,8 @@ fun TelegramBotTutorialDialog(
                     // Token Security Reminder
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = colors.primaryDark.copy(alpha = 0.25f),
-                        border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.35f)),
+                        color = Color.White.copy(alpha = 0.05f),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -352,9 +353,9 @@ fun TelegramBotTutorialDialog(
                             verticalAlignment = Alignment.Top
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Lock,
+                                imageVector = Icons.Outlined.Lock,
                                 contentDescription = null,
-                                tint = colors.primaryBright,
+                                tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -377,12 +378,12 @@ fun TelegramBotTutorialDialog(
                         if (currentStep > 1) {
                             OutlinedButton(
                                 onClick = { currentStep-- },
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
-                                border = BorderStroke(1.dp, colors.border),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.testTag("bot_tutorial_back_btn")
                             ) {
-                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("BACK")
                             }
@@ -402,7 +403,7 @@ fun TelegramBotTutorialDialog(
                             ) {
                                 Text("NEXT", fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
                         } else {
                             Button(
@@ -414,7 +415,7 @@ fun TelegramBotTutorialDialog(
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.testTag("bot_tutorial_done_btn")
                             ) {
-                                Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Icon(imageVector = Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("DONE", fontWeight = FontWeight.Bold)
                             }

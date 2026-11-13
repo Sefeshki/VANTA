@@ -12,11 +12,14 @@ import com.example.service.VantaForegroundService
 import com.example.sms.SmsProcessor
 import com.example.telephony.SimManager
 import com.example.telegram.TelegramBotManager
+import com.example.widget.VantaWidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class VantaApplication : Application() {
@@ -56,12 +59,41 @@ class VantaApplication : Application() {
             preferencesManager.preferences.value.isForwardingEnabled && _isServiceRunning.value
         }
 
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        val appScope = CoroutineScope(Dispatchers.IO)
+
+        appScope.launch {
             networkMonitor.isInternetAvailable.collect { available ->
                 if (available && preferencesManager.telegramConfig.value.hasToken) {
                     telegramBotManager.checkConnection()
                 }
             }
+        }
+
+        // Reactively update home screen widgets whenever real bridge/connectivity state changes
+        appScope.launch {
+            val bridgeStateFlow = combine(
+                isServiceRunning,
+                preferencesManager.preferences,
+                preferencesManager.telegramConfig
+            ) { running, prefs, tgConfig ->
+                Triple(prefs.isForwardingEnabled && running, prefs.simSelectionMode, tgConfig.hasToken)
+            }
+            val networkStateFlow = combine(
+                networkMonitor.isInternetAvailable,
+                networkMonitor.isTelegramReachable,
+                telegramBotManager.isConnected
+            ) { internet, tgReachable, botConnected ->
+                Triple(internet, tgReachable, botConnected)
+            }
+            combine(bridgeStateFlow, networkStateFlow) { bridge, network ->
+                bridge to network
+            }
+                .distinctUntilChanged()
+                .collect {
+                    if (VantaWidgetUpdater.hasWidgets(this@VantaApplication)) {
+                        VantaWidgetUpdater.updateAllWidgets(this@VantaApplication)
+                    }
+                }
         }
 
         EventLogger.log(LogCategory.SYSTEM, "VANTA is ready", LogLevel.SUCCESS)
@@ -74,6 +106,7 @@ class VantaApplication : Application() {
 
     fun setServiceRunning(running: Boolean) {
         _isServiceRunning.value = running
+        VantaWidgetUpdater.updateAllWidgets(this)
     }
 
     fun getBridgeStatus(): BridgeStatus {

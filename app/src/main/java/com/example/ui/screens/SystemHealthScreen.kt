@@ -15,11 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CellTower
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,7 +25,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -91,7 +88,7 @@ fun SystemHealthScreen(
                             modifier = Modifier.testTag("health_back_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = "Back",
                                 tint = colors.textPrimary
                             )
@@ -107,9 +104,9 @@ fun SystemHealthScreen(
                             modifier = Modifier.testTag("health_refresh_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Refresh,
+                                imageVector = Icons.Outlined.Refresh,
                                 contentDescription = "Refresh",
-                                tint = colors.primaryBright
+                                tint = Color.White
                             )
                         }
                     },
@@ -117,199 +114,205 @@ fun SystemHealthScreen(
                 )
             }
         ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            // 1. LIVE TELEMETRY
-            Text(
-                text = "CORE SUBSYSTEMS",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                // 1. LIVE TELEMETRY
+                Text(
+                    text = "CORE SUBSYSTEMS",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-            LiquidGlassCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    HealthItemRow(
-                        name = "Internet Connection",
-                        detail = if (isInternet) "Connected (Active Route)" else "Offline",
-                        isHealthy = isInternet
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.border.copy(alpha = 0.3f))
+                LiquidGlassCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        HealthItemRow(
+                            name = "Internet Connection",
+                            detail = if (isInternet) "Connected (Active Route)" else "Offline",
+                            isHealthy = isInternet
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.10f))
 
-                    HealthItemRow(
-                        name = "Telegram Gateway",
-                        detail = if (isTelegramReachable) "api.telegram.org reachable" else "DNS or Firewall blocked",
-                        isHealthy = isTelegramReachable
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.border.copy(alpha = 0.3f))
+                        HealthItemRow(
+                            name = "Telegram Gateway",
+                            detail = if (isTelegramReachable) "api.telegram.org reachable" else "DNS or Firewall blocked",
+                            isHealthy = isTelegramReachable
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.10f))
 
-                    HealthItemRow(
-                        name = "Bot Session",
-                        detail = if (isBotConnected) "Authorized & Paired" else "Disconnected",
-                        isHealthy = isBotConnected
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.border.copy(alpha = 0.3f))
+                        HealthItemRow(
+                            name = "Bot Session",
+                            detail = if (isBotConnected) "Authorized & Paired" else "Disconnected",
+                            isHealthy = isBotConnected
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.10f))
 
-                    HealthItemRow(
-                        name = "Background Forwarder",
-                        detail = if (isServiceRunning) "Foreground Service Active" else "Service Stopped",
-                        isHealthy = isServiceRunning
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.border.copy(alpha = 0.3f))
+                        HealthItemRow(
+                            name = "Background Forwarder",
+                            detail = if (isServiceRunning) "Foreground Service Active" else "Service Stopped",
+                            isHealthy = isServiceRunning
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.10f))
 
-                    HealthItemRow(
-                        name = "Hardware Keystore",
-                        detail = "AES-256-GCM Hardware-Backed",
-                        isHealthy = true
-                    )
+                        HealthItemRow(
+                            name = "Hardware Keystore",
+                            detail = "AES-256-GCM Hardware-Backed",
+                            isHealthy = true
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // 2. HARDWARE & QUEUE METRICS
-            Text(
-                text = "HARDWARE & QUEUE METRICS",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+                // 2. HARDWARE & QUEUE METRICS
+                Text(
+                    text = "HARDWARE & QUEUE METRICS",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-            LiquidGlassCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Detected SIM Cards",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = "${sims.size} slot(s) populated  •  Mode: ${prefs.simSelectionMode.name}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.textMuted
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = colors.primary.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.3f))
+                LiquidGlassCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "${sims.size} ACTIVE",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = colors.primaryBright,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                            Column {
+                                Text(
+                                    text = "Detected SIM Cards",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "${sims.size} slot(s) populated  •  Mode: ${prefs.simSelectionMode.name}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textMuted
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color.White.copy(alpha = 0.09f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
+                            ) {
+                                Text(
+                                    text = "${sims.size} ACTIVE",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
-                    }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = colors.border.copy(alpha = 0.3f))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = Color.White.copy(alpha = 0.10f))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Pending SMS Queue",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = if (pendingCount == 0) "Queue empty • All delivered" else "$pendingCount waiting for network dispatch",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (pendingCount == 0) colors.textMuted else colors.warning
-                            )
-                        }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (pendingCount == 0) colors.surfaceElevated else colors.warning.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, if (pendingCount == 0) colors.border else colors.warning.copy(alpha = 0.5f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "$pendingCount MSG",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = if (pendingCount == 0) colors.textMuted else colors.warning,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
+                            Column {
+                                Text(
+                                    text = "Pending SMS Queue",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = if (pendingCount == 0) "Queue empty • All delivered" else "$pendingCount waiting for network dispatch",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (pendingCount == 0) colors.textMuted else colors.warning
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (pendingCount == 0) Color.White.copy(alpha = 0.05f) else colors.warning.copy(alpha = 0.2f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (pendingCount == 0) Color.White.copy(alpha = 0.16f) else colors.warning.copy(alpha = 0.5f)
+                                )
+                            ) {
+                                Text(
+                                    text = "$pendingCount MSG",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = if (pendingCount == 0) colors.textMuted else colors.warning,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. PERMISSIONS SHORTCUT
-            Text(
-                text = "OS CAPABILITIES",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+                // 3. PERMISSIONS SHORTCUT
+                Text(
+                    text = "OS CAPABILITIES",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-            LiquidGlassCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Android System Permissions",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = colors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Verify battery optimization exemptions, SMS reception grants, and phone state access.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
+                LiquidGlassCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Android System Permissions",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = colors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Verify battery optimization exemptions, SMS reception grants, and phone state access.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                    Button(
-                        onClick = onNavigateToPermissions,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("health_manage_permissions_btn")
-                    ) {
-                        Icon(imageVector = Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("OPEN PERMISSION CENTER", fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = onNavigateToPermissions,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(46.dp)
+                                .testTag("health_manage_permissions_btn")
+                        ) {
+                            Icon(imageVector = Icons.Outlined.Security, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("OPEN PERMISSION CENTER", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
-    }
     }
 }
 

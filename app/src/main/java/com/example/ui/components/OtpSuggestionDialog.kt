@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -55,23 +55,23 @@ fun OtpSuggestionDialog(
             dismissOnClickOutside = true
         )
     ) {
-        val shape = RoundedCornerShape(22.dp)
+        val shape = RoundedCornerShape(24.dp)
         val strokeBrush = Brush.linearGradient(
             colors = listOf(
-                colors.primaryBright.copy(alpha = 0.65f),
-                colors.primaryGlow.copy(alpha = 0.35f),
-                colors.border.copy(alpha = 0.30f)
+                Color.White.copy(alpha = 0.50f),
+                Color.White.copy(alpha = 0.14f),
+                Color.White.copy(alpha = 0.28f)
             )
         )
 
         Surface(
-            color = Color(0xF20D0B18),
+            color = Color(0xEB070709),
             shape = shape,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
                 .clip(shape)
-                .border(1.2.dp, strokeBrush, shape)
+                .border(1.dp, strokeBrush, shape)
                 .testTag("otp_suggestion_dialog")
         ) {
             Box(
@@ -80,8 +80,8 @@ fun OtpSuggestionDialog(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                colors.primaryDark.copy(alpha = 0.32f),
-                                Color(0x0A0D0B18)
+                                Color.White.copy(alpha = 0.08f),
+                                Color.Transparent
                             )
                         )
                     )
@@ -101,9 +101,9 @@ fun OtpSuggestionDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Shield,
+                            imageVector = Icons.Outlined.Shield,
                             contentDescription = null,
-                            tint = colors.primaryBright,
+                            tint = Color.White,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -121,11 +121,11 @@ fun OtpSuggestionDialog(
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(36.dp)
                             .testTag("dismiss_otp_suggestion_btn")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Rounded.Close,
                             contentDescription = "Close",
                             tint = colors.textMuted,
                             modifier = Modifier.size(18.dp)

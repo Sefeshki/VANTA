@@ -16,13 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -88,7 +86,7 @@ fun PrivacyProtectionScreen(
                             modifier = Modifier.testTag("privacy_back_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = "Back",
                                 tint = colors.textPrimary
                             )
@@ -98,185 +96,157 @@ fun PrivacyProtectionScreen(
                 )
             }
         ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            // 1. SENSITIVE OTP SHIELD
-            Text(
-                text = "OTP & AUTHENTICATION SHIELD",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                // 1. SENSITIVE OTP SHIELD
+                Text(
+                    text = "OTP & AUTHENTICATION SHIELD",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-            LiquidGlassCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                LiquidGlassCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = if (prefs.isOtpProtectionEnabled) colors.primaryBright else colors.textMuted,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Shield,
+                                    contentDescription = null,
+                                    tint = if (prefs.isOtpProtectionEnabled) Color.White else colors.textMuted,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Shield Login & OTP Codes",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = colors.textPrimary
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Inspects incoming SMS content and suppresses forwarding of verification codes, banking OTPs, and two-factor tokens.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.textMuted
+                                    )
+                                }
+                            }
+
                             Spacer(modifier = Modifier.width(12.dp))
+
+                            Switch(
+                                checked = prefs.isOtpProtectionEnabled,
+                                onCheckedChange = { app.preferencesManager.setOtpProtectionEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color.White.copy(alpha = 0.28f),
+                                    checkedBorderColor = Color.White.copy(alpha = 0.45f),
+                                    uncheckedThumbColor = colors.textMuted,
+                                    uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
+                                    uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
+                                ),
+                                modifier = Modifier.testTag("privacy_otp_switch")
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 2. HARDWARE KEYSTORE & ENCRYPTION
+                Text(
+                    text = "DEVICE KEYSTORE INTEGRITY",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                LiquidGlassCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.VpnKey,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Shield Login & OTP Codes",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    text = "Hardware-Backed Security",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                     color = colors.textPrimary
                                 )
-                                Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Inspects incoming SMS content and suppresses forwarding of verification codes, banking OTPs, and two-factor tokens.",
+                                    text = "AES-256-GCM authenticated encryption",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colors.textMuted
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        Switch(
-                            checked = prefs.isOtpProtectionEnabled,
-                            onCheckedChange = { app.preferencesManager.setOtpProtectionEnabled(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = colors.primaryBright,
-                                checkedTrackColor = colors.primaryDark,
-                                uncheckedThumbColor = colors.textMuted,
-                                uncheckedTrackColor = colors.surfaceElevated
-                            ),
-                            modifier = Modifier.testTag("privacy_otp_switch")
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 2. HARDWARE KEYSTORE & ENCRYPTION
-            Text(
-                text = "DEVICE KEYSTORE INTEGRITY",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-
-            LiquidGlassCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.VpnKey,
-                            contentDescription = null,
-                            tint = colors.primaryBright,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.White.copy(alpha = 0.05f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.16f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(
-                                text = "Hardware-Backed Security",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = "AES-256-GCM authenticated encryption",
+                                text = "Your Telegram bot tokens and encryption secrets are stored directly in Android Keystore with master keys protected in device hardware. Tokens never touch unencrypted storage.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = colors.textMuted
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(12.dp)
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = colors.primaryDark.copy(alpha = 0.35f),
-                        border = BorderStroke(1.dp, colors.primary.copy(alpha = 0.3f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Your Telegram bot tokens and encryption secrets are stored directly in Android Keystore with master keys protected in device hardware. Tokens never touch unencrypted storage.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textSecondary,
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. LOG PURGE & CREDENTIAL DESTRUCTION
-            Text(
-                text = "DATA SANITIZATION",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = colors.primaryBright
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+                // 3. LOG PURGE & CREDENTIAL DESTRUCTION
+                Text(
+                    text = "DATA SANITIZATION",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(10.dp))
 
-            LiquidGlassCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Clear Local Activity Logs",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = colors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Wipes all event logs and audit history from device memory immediately.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedButton(
-                        onClick = {
-                            EventLogger.clear()
-                            Toast.makeText(context, "All logs cleared", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primaryBright),
-                        border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.45f)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("privacy_clear_logs_btn")
-                    ) {
-                        Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("CLEAR LOGS")
-                    }
-
-                    if (telegramConfig.hasToken) {
-                        Spacer(modifier = Modifier.height(18.dp))
+                LiquidGlassCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "Purge Bot Credentials",
+                            text = "Clear Local Activity Logs",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = colors.error
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Disconnects Telegram, revokes session, and deletes the encrypted bot token from Android Keystore.",
+                            text = "Wipes all event logs and audit history from device memory immediately.",
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.textMuted
                         )
@@ -284,24 +254,58 @@ fun PrivacyProtectionScreen(
 
                         OutlinedButton(
                             onClick = {
-                                app.telegramBotManager.disconnect()
-                                Toast.makeText(context, "Credentials wiped clean", Toast.LENGTH_SHORT).show()
+                                EventLogger.clear()
+                                Toast.makeText(context, "All logs cleared", Toast.LENGTH_SHORT).show()
                             },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
-                            border = BorderStroke(1.dp, colors.error.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
                             shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth().testTag("privacy_purge_credentials_btn")
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("privacy_clear_logs_btn")
                         ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = Icons.Outlined.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("WIPE SAVED CREDENTIALS")
+                            Text("CLEAR LOGS", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        if (telegramConfig.hasToken) {
+                            Spacer(modifier = Modifier.height(18.dp))
+                            Text(
+                                text = "Purge Bot Credentials",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = colors.error
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Disconnects Telegram, revokes session, and deletes the encrypted bot token from Android Keystore.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                onClick = {
+                                    app.telegramBotManager.disconnect()
+                                    Toast.makeText(context, "Credentials wiped clean", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                                border = BorderStroke(1.dp, colors.error.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("privacy_purge_credentials_btn")
+                            ) {
+                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("WIPE SAVED CREDENTIALS", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
-    }
     }
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_status_description"
+    android:initialLayout="@layout/widget_vanta_status"
+    android:maxResizeHeight="220dp"
+    android:maxResizeWidth="520dp"
+    android:minHeight="64dp"
+    android:minResizeHeight="56dp"
+    android:minResizeWidth="140dp"
+    android:minWidth="210dp"
+    android:previewLayout="@layout/widget_vanta_status"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="1"
+    android:targetCellWidth="4"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

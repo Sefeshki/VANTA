@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import com.example.data.model.AppPreferences
 import com.example.data.model.SimSelectionMode
 import com.example.data.model.TelegramConfig
-import com.example.ui.theme.VantaThemeId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,13 +20,10 @@ class PreferencesManager(context: Context) {
     val telegramConfig: StateFlow<TelegramConfig> = _telegramConfig.asStateFlow()
 
     private fun loadPreferences(): AppPreferences {
-        val themeOrdinal = prefs.getInt(KEY_THEME, VantaThemeId.PURPLE.ordinal)
-        val theme = VantaThemeId.entries.getOrElse(themeOrdinal) { VantaThemeId.PURPLE }
         val simOrdinal = prefs.getInt(KEY_SIM_SELECTION, SimSelectionMode.ALL.ordinal)
         val simMode = SimSelectionMode.entries.getOrElse(simOrdinal) { SimSelectionMode.ALL }
 
         return AppPreferences(
-            theme = theme,
             isForwardingEnabled = prefs.getBoolean(KEY_FORWARDING_ENABLED, false),
             isStayAliveEnabled = prefs.getBoolean(KEY_STAY_ALIVE_ENABLED, true),
             isAutoStartEnabled = prefs.getBoolean(KEY_AUTO_START_ENABLED, false),
@@ -136,11 +132,6 @@ class PreferencesManager(context: Context) {
         _preferences.value = _preferences.value.copy(simSelectionMode = mode)
     }
 
-    fun setTheme(theme: VantaThemeId) {
-        prefs.edit().putInt(KEY_THEME, theme.ordinal).apply()
-        _preferences.value = _preferences.value.copy(theme = theme)
-    }
-
     fun setTutorialCompleted(completed: Boolean) {
         prefs.edit().putBoolean(KEY_TUTORIAL_COMPLETED, completed).apply()
         _preferences.value = _preferences.value.copy(isTutorialCompleted = completed)
@@ -177,7 +168,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_OTP_PROTECTION = "otp_protection"
         private const val KEY_SEEN_OTP_SUGGESTION = "seen_otp_suggestion"
         private const val KEY_SIM_SELECTION = "sim_selection"
-        private const val KEY_THEME = "app_theme"
         private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed"
         private const val KEY_LAST_DELIVERY = "last_delivery_timestamp"
         private const val KEY_DELIVERY_COUNT = "delivery_count"

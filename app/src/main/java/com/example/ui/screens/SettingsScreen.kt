@@ -1,15 +1,10 @@
 package com.example.ui.screens
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,23 +15,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Power
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -55,7 +41,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -65,11 +50,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.core.EventLogger
-import com.example.ui.components.CircularGithubButton
 import com.example.ui.components.EventHorizonBackground
+import com.example.ui.components.GithubStarButton
 import com.example.ui.components.GlowCard
 import com.example.ui.theme.LocalVantaColors
-import com.example.ui.theme.VantaThemeId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +70,7 @@ fun SettingsScreen(
     val telegramConfig by app.preferencesManager.telegramConfig.collectAsState()
     val isInternet by app.networkMonitor.isInternetAvailable.collectAsState()
     val isServiceRunning by app.isServiceRunning.collectAsState()
+    val isBotConnected by app.telegramBotManager.isConnected.collectAsState()
 
     EventHorizonBackground {
         Scaffold(
@@ -109,7 +94,7 @@ fun SettingsScreen(
                             modifier = Modifier.testTag("settings_back_btn")
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                 contentDescription = "Back",
                                 tint = colors.textPrimary
                             )
@@ -119,248 +104,228 @@ fun SettingsScreen(
                 )
             }
         ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            // 1. THEME (Purple, Red, Blue, Cyan)
-            SectionHeader(title = "THEME")
-            Spacer(modifier = Modifier.height(10.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                // 1. PRIVACY & SENSITIVE MESSAGES
+                SectionHeader(title = "PRIVACY & PROTECTION")
+                Spacer(modifier = Modifier.height(10.dp))
 
-            GlowCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Choose your accent color",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary
-                    )
-                    Spacer(modifier = Modifier.height(14.dp))
+                GlowCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Shield Login & OTP Codes",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Prevents OTPs and one-time authentication codes from being forwarded to Telegram. Off by default.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textMuted
+                                )
+                            }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        VantaThemeId.entries.forEach { themeOption ->
-                            ThemeChip(
-                                theme = themeOption,
-                                isSelected = prefs.theme == themeOption,
-                                onSelect = { app.preferencesManager.setTheme(themeOption) }
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Switch(
+                                checked = prefs.isOtpProtectionEnabled,
+                                onCheckedChange = { app.preferencesManager.setOtpProtectionEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color.White.copy(alpha = 0.28f),
+                                    checkedBorderColor = Color.White.copy(alpha = 0.45f),
+                                    uncheckedThumbColor = colors.textMuted,
+                                    uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
+                                    uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
+                                ),
+                                modifier = Modifier.testTag("otp_switch")
                             )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                EventLogger.clear()
+                                Toast.makeText(context, "Log cleared", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.28f)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("clear_logs_settings_btn")
+                        ) {
+                            Icon(imageVector = Icons.Outlined.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("CLEAR LOGS", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        if (telegramConfig.hasToken) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    app.telegramBotManager.disconnect()
+                                    Toast.makeText(context, "Credentials wiped clean", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                                border = BorderStroke(1.dp, colors.error.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("purge_credentials_btn")
+                            ) {
+                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("WIPE SAVED CREDENTIALS", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            // 2. PRIVACY & SENSITIVE MESSAGES
-            SectionHeader(title = "PRIVACY & PROTECTION")
-            Spacer(modifier = Modifier.height(10.dp))
+                // 2. TELEGRAM BOT SHORTCUT
+                SectionHeader(title = "TELEGRAM BOT")
+                Spacer(modifier = Modifier.height(10.dp))
 
-            GlowCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
+                GlowCard(onClick = onNavigateToTelegram) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Shield Login & OTP Codes",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = colors.textPrimary
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Send,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Prevents OTPs and one-time authentication codes from being forwarded to Telegram. Off by default.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.textMuted
-                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Bot & Pairing Setup",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = if (telegramConfig.hasToken) "@${telegramConfig.botUsername ?: "bot"} • Connected" else "Tap to connect your bot",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (telegramConfig.hasToken) colors.success else colors.warning
+                                )
+                            }
                         }
 
-                        Switch(
-                            checked = prefs.isOtpProtectionEnabled,
-                            onCheckedChange = { app.preferencesManager.setOtpProtectionEnabled(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = colors.primaryBright,
-                                checkedTrackColor = colors.primaryDark,
-                                uncheckedThumbColor = colors.textMuted,
-                                uncheckedTrackColor = colors.surfaceElevated
-                            ),
-                            modifier = Modifier.testTag("otp_switch")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = null,
+                            tint = colors.textMuted
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                    // Clear logs button
-                    OutlinedButton(
-                        onClick = {
-                            EventLogger.clear()
-                            Toast.makeText(context, "Log cleared", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primaryBright),
-                        border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.45f)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("clear_logs_settings_btn")
+                // 3. TUTORIAL REPLAY
+                SectionHeader(title = "NEED A REFRESHER?")
+                Spacer(modifier = Modifier.height(10.dp))
+
+                GlowCard(onClick = onReplayTutorial) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("CLEAR LOGS")
-                    }
-
-                    if (telegramConfig.hasToken) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedButton(
-                            onClick = {
-                                app.telegramBotManager.disconnect()
-                                Toast.makeText(context, "Credentials wiped clean", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
-                            border = BorderStroke(1.dp, colors.error.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth().testTag("purge_credentials_btn")
-                        ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("WIPE SAVED CREDENTIALS")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Replay the Quick Tour",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = "Walk through the guide again",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textMuted
+                                )
+                            }
                         }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = null,
+                            tint = colors.textMuted
+                        )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            // 3. TELEGRAM BOT SHORTCUT
-            SectionHeader(title = "TELEGRAM BOT")
-            Spacer(modifier = Modifier.height(10.dp))
+                // 4. DIAGNOSTICS
+                SectionHeader(title = "SYSTEM HEALTH")
+                Spacer(modifier = Modifier.height(10.dp))
 
-            GlowCard(onClick = onNavigateToTelegram) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Send,
-                            contentDescription = null,
-                            tint = colors.primaryBright,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Bot & Pairing Setup",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = if (telegramConfig.hasToken) "@${telegramConfig.botUsername ?: "bot"} • Connected" else "Tap to connect your bot",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (telegramConfig.hasToken) colors.primaryBright else colors.warning
-                            )
-                        }
+                GlowCard {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        DiagnosticRow(name = "Internet Connection", status = if (isInternet) "Online" else "Offline", isOk = isInternet)
+                        DiagnosticRow(name = "Telegram Bot API", status = if (isBotConnected) "Connected" else "Unreachable", isOk = isBotConnected)
+                        DiagnosticRow(name = "Background Worker", status = if (isServiceRunning) "Running" else "Idle", isOk = isServiceRunning)
+                        DiagnosticRow(name = "Token Encryption", status = "Hardware Keystore (AES-256)", isOk = true)
                     }
+                }
 
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = colors.textMuted
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // 5. GITHUB & SOURCE-AVAILABLE FOOTER
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    GithubStarButton(
+                        onClick = {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Sefeshki/VANTA"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "VANTA · Source Available",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp
+                        ),
+                        color = colors.textMuted
                     )
                 }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 4. TUTORIAL REPLAY
-            SectionHeader(title = "NEED A REFRESHER?")
-            Spacer(modifier = Modifier.height(10.dp))
-
-            GlowCard(onClick = onReplayTutorial) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.HelpOutline,
-                            contentDescription = null,
-                            tint = colors.primaryBright,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Replay the Quick Tour",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = colors.textPrimary
-                            )
-                            Text(
-                                text = "Walk through the 10-step guide again",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.textMuted
-                            )
-                        }
-                    }
-
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = colors.textMuted
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 5. DIAGNOSTICS
-            SectionHeader(title = "SYSTEM HEALTH")
-            Spacer(modifier = Modifier.height(10.dp))
-
-            GlowCard {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    DiagnosticRow(name = "Internet Connection", status = if (isInternet) "Online" else "Offline", isOk = isInternet)
-                    DiagnosticRow(name = "Telegram Bot API", status = if (app.telegramBotManager.isConnected.collectAsState().value) "Connected" else "Unreachable", isOk = app.telegramBotManager.isConnected.collectAsState().value)
-                    DiagnosticRow(name = "Background Worker", status = if (isServiceRunning) "Running" else "Idle", isOk = isServiceRunning)
-                    DiagnosticRow(name = "Token Encryption", status = "Hardware Keystore (AES-256)", isOk = true)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // 6. GITHUB & CREATOR SECTION (At the very bottom as required)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                CircularGithubButton(
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Sefeshki/"))
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Could not open browser", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "VANTA by Sefeshki • Open source on GitHub",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textMuted
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
-    }
     }
 }
 
@@ -376,62 +341,6 @@ private fun SectionHeader(title: String) {
         ),
         color = colors.primaryBright
     )
-}
-
-@Composable
-private fun ThemeChip(
-    theme: VantaThemeId,
-    isSelected: Boolean,
-    onSelect: () -> Unit
-) {
-    val colors = LocalVantaColors.current
-    val accent = Color(theme.primaryColorHex)
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onSelect)
-            .padding(6.dp)
-            .testTag("theme_chip_${theme.name}")
-    ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF0C0C14))
-                .border(
-                    width = if (isSelected) 2.5.dp else 1.dp,
-                    color = if (isSelected) accent else colors.border,
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(accent)
-            )
-            if (isSelected) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color.Black,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = theme.displayName,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            ),
-            color = if (isSelected) colors.textPrimary else colors.textMuted
-        )
-    }
 }
 
 @Composable

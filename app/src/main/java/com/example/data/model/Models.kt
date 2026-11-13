@@ -1,7 +1,5 @@
 package com.example.data.model
 
-import com.example.ui.theme.VantaThemeId
-
 enum class SimSelectionMode(val label: String) {
     ALL("Both SIMs"),
     SIM1_ONLY("SIM1 Only"),
@@ -94,7 +92,6 @@ data class BridgeStatus(
 )
 
 data class AppPreferences(
-    val theme: VantaThemeId = VantaThemeId.PURPLE,
     val isForwardingEnabled: Boolean = false,
     val isStayAliveEnabled: Boolean = true,
     val isAutoStartEnabled: Boolean = false,

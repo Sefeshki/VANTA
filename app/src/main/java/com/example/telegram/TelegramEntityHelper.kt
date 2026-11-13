@@ -193,7 +193,7 @@ object TelegramEntityHelper {
         val text = """
             VANTA SMS Bridge — Help
             
-            VANTA is a secure, open-source Android SMS-to-Telegram bridge created by Sefeshki.
+            VANTA is a secure, source-available Android SMS-to-Telegram bridge created by Sefeshki.
             
             Commands:
             • /start — Verify connection and get fresh device status

@@ -1,11 +1,11 @@
 package com.example
 
+import androidx.compose.ui.graphics.Color
 import com.example.core.EventLogger
 import com.example.data.model.LogCategory
 import com.example.data.model.SimCardInfo
 import com.example.sms.SmsProcessor
 import com.example.telegram.TelegramEntityHelper
-import com.example.ui.theme.VantaThemeId
 import com.example.ui.theme.getVantaColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -132,18 +132,15 @@ class VantaUnitTest {
     }
 
     @Test
-    fun testAllFourThemesAreConfigured() {
-        for (theme in VantaThemeId.entries) {
-            val colors = getVantaColors(theme)
-            assertNotNull(colors.primary)
-            assertNotNull(colors.primaryBright)
-            assertNotNull(colors.primaryGlow)
-            assertNotNull(colors.background)
-        }
-        assertEquals("Purple", VantaThemeId.PURPLE.displayName)
-        assertEquals("Red", VantaThemeId.RED.displayName)
-        assertEquals("Blue", VantaThemeId.BLUE.displayName)
-        assertEquals("Cyan", VantaThemeId.CYAN.displayName)
+    fun testMonochromeAmoledThemeConfiguration() {
+        val colors = getVantaColors()
+        assertEquals(Color(0xFF000000), colors.background)
+        assertEquals(Color.White, colors.primary)
+        assertNotNull(colors.primaryBright)
+        assertNotNull(colors.primaryGlow)
+        assertNotNull(colors.success)
+        assertNotNull(colors.warning)
+        assertNotNull(colors.error)
     }
 
     @Test
@@ -363,6 +360,66 @@ class VantaUnitTest {
         val result = com.example.core.UpdateManager.parseReleaseJson(mockJsonNoApk)
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("no .apk asset") == true)
+    }
+
+    @Test
+    fun testHomeScreenWidgetRemoteViewsAndResizeAdaptation() {
+        val context = org.robolectric.RuntimeEnvironment.getApplication()
+        val activeSnapshot = com.example.widget.WidgetStatusSnapshot(
+            isForwardingActive = true,
+            isTelegramOnline = true,
+            isInternetOnline = true,
+            simLabel = "BOTH SIMS"
+        )
+
+        val standardViews = com.example.widget.VantaWidgetUpdater.buildRemoteViews(context, activeSnapshot)
+        val inflatedStandard = standardViews.apply(context, android.widget.FrameLayout(context))
+        assertEquals(
+            "ACTIVE",
+            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_forwarding_value).text.toString()
+        )
+        assertEquals(
+            "ONLINE",
+            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_telegram_value).text.toString()
+        )
+        assertEquals(
+            "ONLINE",
+            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_internet_value).text.toString()
+        )
+        assertEquals(
+            "FORWARDING",
+            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_forwarding_label).text.toString()
+        )
+
+        // Compact narrow & ultra-short resize state
+        val compactOptions = android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 160)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 56)
+        }
+        val offlineSnapshot = com.example.widget.WidgetStatusSnapshot(
+            isForwardingActive = false,
+            isTelegramOnline = false,
+            isInternetOnline = false,
+            simLabel = "SIM 1 ONLY"
+        )
+        val compactViews = com.example.widget.VantaWidgetUpdater.buildRemoteViews(context, offlineSnapshot, compactOptions)
+        val inflatedCompact = compactViews.apply(context, android.widget.FrameLayout(context))
+        assertEquals(
+            "OFF",
+            inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_forwarding_value).text.toString()
+        )
+        assertEquals(
+            "OFFLINE",
+            inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_telegram_value).text.toString()
+        )
+        assertEquals(
+            "FWD",
+            inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_forwarding_label).text.toString()
+        )
+        assertEquals(
+            android.view.View.GONE,
+            inflatedCompact.findViewById<android.view.View>(R.id.widget_header_row).visibility
+        )
     }
 }
 

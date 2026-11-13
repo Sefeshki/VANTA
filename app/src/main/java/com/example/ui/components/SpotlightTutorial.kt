@@ -24,10 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.TipsAndUpdates
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -86,7 +86,7 @@ val VANTA_TUTORIAL_STEPS = listOf(
     ),
     TutorialStep(
         title = "The LOG",
-        subtitle = "Like a tree log. Get it?",
+        subtitle = "Real-time event telemetry",
         description = "A clean real-time record of what VANTA is doing behind the scenes. We never log your actual message text, codes, or secrets."
     ),
     TutorialStep(
@@ -100,14 +100,14 @@ val VANTA_TUTORIAL_STEPS = listOf(
         description = "If your secondary phone restarts, this picks right back up where you left off without needing you to touch the phone."
     ),
     TutorialStep(
-        title = "Theme & Privacy",
-        subtitle = "Make it your own",
-        description = "Switch themes (Purple, Red, Blue, Cyan), manage OTP privacy, or wipe your credentials clean whenever you want."
+        title = "Privacy & Control",
+        subtitle = "Security on your terms",
+        description = "Manage OTP privacy, check system health diagnostics, or wipe your credentials clean whenever you want."
     ),
     TutorialStep(
         title = "You're All Set!",
-        subtitle = "Let's roll",
-        description = "Pair your bot, grant the SMS permission, hit the power button, and you're good to go. Enjoy your new bridge!"
+        subtitle = "Ready for launch",
+        description = "Pair your bot, grant the SMS permission, ignite the energy core, and you're good to go."
     )
 )
 
@@ -144,26 +144,26 @@ fun SpotlightTutorialOverlay(
             val shape = RoundedCornerShape(24.dp)
             val strokeBrush = Brush.linearGradient(
                 colors = listOf(
-                    colors.primaryBright.copy(alpha = 0.65f),
-                    colors.primaryGlow.copy(alpha = 0.35f),
-                    colors.border.copy(alpha = 0.30f)
+                    Color.White.copy(alpha = 0.50f),
+                    Color.White.copy(alpha = 0.14f),
+                    Color.White.copy(alpha = 0.26f)
                 )
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(shape)
-                    .background(Color(0xF20D0B18))
+                    .background(Color(0xEB070709))
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                colors.primaryDark.copy(alpha = 0.32f),
-                                Color(0x0A0D0B18)
+                                Color.White.copy(alpha = 0.08f),
+                                Color.Transparent
                             )
                         )
                     )
                     .border(
-                        width = 1.2.dp,
+                        width = 1.dp,
                         brush = strokeBrush,
                         shape = shape
                     )
@@ -178,22 +178,23 @@ fun SpotlightTutorialOverlay(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(colors.primaryDark)
+                            .background(Color.White.copy(alpha = 0.10f))
+                            .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "STEP ${currentStepIndex + 1} OF ${VANTA_TUTORIAL_STEPS.size}",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = colors.primaryBright
+                            color = Color.White
                         )
                     }
 
                     IconButton(
                         onClick = onFinish,
-                        modifier = Modifier.size(32.dp).testTag("tutorial_skip_btn")
+                        modifier = Modifier.size(36.dp).testTag("tutorial_skip_btn")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Icons.Rounded.Close,
                             contentDescription = "Skip Tutorial",
                             tint = colors.textMuted
                         )
@@ -217,14 +218,15 @@ fun SpotlightTutorialOverlay(
                                 modifier = Modifier
                                     .size(44.dp)
                                     .clip(CircleShape)
-                                    .background(colors.primaryDark),
+                                    .background(Color.White.copy(alpha = 0.10f))
+                                    .border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.TipsAndUpdates,
+                                    imageVector = Icons.Outlined.AutoAwesome,
                                     contentDescription = null,
-                                    tint = colors.primaryBright,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(14.dp))
@@ -285,10 +287,11 @@ fun SpotlightTutorialOverlay(
                         OutlinedButton(
                             onClick = { currentStepIndex-- },
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f)),
                             modifier = Modifier.testTag("tutorial_prev_btn")
                         ) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = null)
+                            Icon(Icons.Rounded.ChevronLeft, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Back")
                         }
@@ -306,7 +309,7 @@ fun SpotlightTutorialOverlay(
                             if (isLast) onFinish() else currentStepIndex++
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.primary,
+                            containerColor = Color.White,
                             contentColor = Color.Black
                         ),
                         shape = RoundedCornerShape(12.dp),
@@ -317,7 +320,7 @@ fun SpotlightTutorialOverlay(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Default.ChevronRight, contentDescription = null)
+                        Icon(Icons.Rounded.ChevronRight, contentDescription = null)
                     }
                 }
             }

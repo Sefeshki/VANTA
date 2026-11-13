@@ -21,7 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -99,9 +99,9 @@ fun CyberTerminal(
     val terminalShape = RoundedCornerShape(16.dp)
     val terminalBorderBrush = Brush.linearGradient(
         colors = listOf(
-            colors.primaryBright.copy(alpha = 0.45f),
-            colors.primaryGlow.copy(alpha = 0.22f),
-            colors.border.copy(alpha = 0.35f)
+            Color.White.copy(alpha = 0.28f),
+            Color.White.copy(alpha = 0.08f),
+            Color.White.copy(alpha = 0.18f)
         )
     )
 
@@ -112,8 +112,8 @@ fun CyberTerminal(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        colors.primaryDark.copy(alpha = 0.20f),
-                        Color(0xCC0D0B18)
+                        Color.White.copy(alpha = 0.05f),
+                        Color(0xCC060608)
                     )
                 )
             )
@@ -121,28 +121,23 @@ fun CyberTerminal(
             .padding(14.dp)
             .testTag("cyber_terminal")
     ) {
-        // Header with tree-style LOG icon treatment
+        // Header with minimalist vector LOG emblem
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                WoodLogIcon(tint = colors.primaryBright)
+                WoodLogIcon(tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "LOG",
                     style = MaterialTheme.typography.labelLarge.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.5.sp
                     ),
-                    color = colors.textPrimary
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "🪵",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp)
+                    color = Color.White
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusDot(isActive = true, size = 6.dp)
@@ -150,12 +145,12 @@ fun CyberTerminal(
 
             IconButton(
                 onClick = onClear,
-                modifier = Modifier.size(28.dp).testTag("clear_terminal_btn")
+                modifier = Modifier.size(32.dp).testTag("clear_terminal_btn")
             ) {
                 Icon(
-                    imageVector = Icons.Default.DeleteSweep,
+                    imageVector = Icons.Outlined.DeleteSweep,
                     contentDescription = "Clear Log",
-                    tint = colors.textMuted,
+                    tint = colors.textSecondary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -206,8 +201,8 @@ fun CyberTerminal(
                 .fillMaxWidth()
                 .height(160.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color(0x99030307))
-                .border(1.dp, colors.primaryGlow.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
+                .background(Color(0xDD000000))
+                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(10.dp))
                 .padding(8.dp)
         ) {
             if (filteredLogs.isEmpty()) {
@@ -259,16 +254,16 @@ private fun TerminalFilterChip(
             )
         },
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = colors.primaryDark,
-            selectedLabelColor = colors.primaryBright,
-            containerColor = Color(0xFF111119),
+            selectedContainerColor = Color.White.copy(alpha = 0.14f),
+            selectedLabelColor = Color.White,
+            containerColor = Color(0xFF0A0A0D),
             labelColor = colors.textMuted
         ),
         border = FilterChipDefaults.filterChipBorder(
             enabled = true,
             selected = selected,
-            borderColor = colors.border,
-            selectedBorderColor = colors.primary
+            borderColor = Color.White.copy(alpha = 0.14f),
+            selectedBorderColor = Color.White.copy(alpha = 0.65f)
         ),
         modifier = Modifier.height(26.dp)
     )
@@ -279,21 +274,21 @@ private fun TerminalLine(log: LogEntry) {
     val colors = LocalVantaColors.current
 
     val tagColor = when (log.category) {
-        LogCategory.SYSTEM -> Color(0xFF38BDF8)
-        LogCategory.TELEGRAM -> colors.primaryBright
-        LogCategory.NETWORK -> Color(0xFF60A5FA)
-        LogCategory.SIM -> Color(0xFFFBBF24)
-        LogCategory.SERVICE -> Color(0xFF34D399)
-        LogCategory.SMS_DELIVERY -> Color(0xFF4ADE80)
-        LogCategory.SECURITY -> Color(0xFFF97316)
+        LogCategory.SYSTEM -> Color(0xFFE4E4E7)
+        LogCategory.TELEGRAM -> Color.White
+        LogCategory.NETWORK -> Color(0xFFD4D4D8)
+        LogCategory.SIM -> Color(0xFFA1A1AA)
+        LogCategory.SERVICE -> Color.White
+        LogCategory.SMS_DELIVERY -> colors.success
+        LogCategory.SECURITY -> Color(0xFFE4E4E7)
         LogCategory.ERROR -> colors.error
     }
 
     val textColor = when (log.level) {
         LogLevel.ERROR -> colors.error
         LogLevel.WARNING -> colors.warning
-        LogLevel.SUCCESS -> Color(0xFFE2E8F0)
-        LogLevel.INFO -> Color(0xFFCBD5E1)
+        LogLevel.SUCCESS -> Color(0xFFFFFFFF)
+        LogLevel.INFO -> Color(0xFFB4B4BE)
     }
 
     Row(
