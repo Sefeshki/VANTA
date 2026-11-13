@@ -1,23 +1,23 @@
  <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:080808,50:24004f,100:050505&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=8b5cf6&strokeWidth=1" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
 ### Your phone. Your SIM. Your Telegram.
 
 A self-hosted Android SMS-to-Telegram bridge. Turn a spare Android phone into your personal SMS gateway.
 
-**Not a vibe-coded template.** VANTA is a purpose-built Android application developed with Kotlin and Jetpack Compose.
+**Purpose-built Android application developed with Kotlin and Jetpack Compose.**
 
 <br/>
 
-<a href="https://github.com/Sefeshki/VANTA/releases"><img src="https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=8b5cf6&label=RELEASE" /></a>
-<a href="https://github.com/Sefeshki/VANTA"><img src="https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=06b6d4" /></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-8b5cf6?style=for-the-badge" /></a>
-<img src="https://img.shields.io/badge/PLATFORM-ANDROID-22c55e?style=for-the-badge" />
+<a href="https://github.com/Sefeshki/VANTA/releases"><img src="https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=ffffff&label=RELEASE&labelColor=000000" /></a>
+<a href="https://github.com/Sefeshki/VANTA"><img src="https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=ffffff&labelColor=000000" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge&labelColor=000000" /></a>
+<img src="https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge&labelColor=000000" />
 
 <br/><br/>
 
-**[ DOWNLOAD ](https://github.com/Sefeshki/VANTA/releases/latest) · [ SOURCE CODE ](https://github.com/Sefeshki/VANTA) · [ DEVELOPER ](https://github.com/Sefeshki)**
+**[DOWNLOAD](https://github.com/Sefeshki/VANTA/releases/latest) · [SOURCE CODE](https://github.com/Sefeshki/VANTA) · [DEVELOPER](https://github.com/Sefeshki)**
 
 </div>
 
@@ -25,7 +25,7 @@ A self-hosted Android SMS-to-Telegram bridge. Turn a spare Android phone into yo
 
 <div align="center">
 
-### ◈ WHAT'S VANTA?
+### ◈ WHAT IS VANTA?
 
 </div>
 
@@ -35,13 +35,13 @@ VANTA connects your Android device to your own Telegram bot and forwards incomin
 
 No separate server to maintain. No third-party forwarding platform. Your phone handles the bridge.
 
-### ✦ WHAT'S INSIDE?
+### ◈ FEATURES
 
 <table>
 <tr>
 <td width="50%">
 
-<h3>◉ SMS BRIDGE</h3>
+<h3>SMS BRIDGE</h3>
 
 - Automatic incoming SMS forwarding
 - Dual-SIM identification
@@ -52,29 +52,30 @@ No separate server to maintain. No third-party forwarding platform. Your phone h
 </td>
 <td width="50%">
 
-<h3>◈ TELEGRAM</h3>
+<h3>TELEGRAM</h3>
 
 - Your own Telegram bot
 - Direct Telegram Bot API connection
 - Secure bot pairing
+- Telegram message delivery
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-<h3>⌘ PRIVACY</h3>
+<h3>PRIVACY</h3>
 
 - Android Keystore encryption
 - AES-256-GCM credential protection
-- Optional OTP / verification-code filtering
+- Optional OTP filtering
 - Authorized Telegram user checks
 - Credential cleanup on disconnect
 
 </td>
 <td width="50%">
 
-<h3>⚡ SYSTEM</h3>
+<h3>SYSTEM</h3>
 
 - Live service monitoring
 - Connection diagnostics
@@ -88,37 +89,31 @@ No separate server to maintain. No third-party forwarding platform. Your phone h
 
 ### ◈ YOUR PHONE DOES THE WORK
 
-VANTA runs on your Android device and communicates directly with the official Telegram Bot API. It does not require a separate forwarding server.
+VANTA runs directly on your Android device and communicates with the official Telegram Bot API.
 
-**A little network reality:** SMS reception happens on the phone, but delivering messages to Telegram requires an internet connection. Local settings and parts of the application remain usable offline.
+No separate forwarding server required.
+
+SMS reception happens on your phone, but delivering messages to Telegram requires an internet connection. Local settings and parts of the application remain usable offline.
 
 ---
 
-<br/>
-
 <div align="center">
 
-### ◈ SECURITY IS NOT AN AFTERTHOUGHT
+### ◈ SECURITY
 
 </div>
 
 - Bot credentials are protected using Android Keystore-backed AES-256-GCM encryption.
 - Telegram communication uses HTTPS.
 - Telegram commands are restricted to authorized users.
-- OTP filtering is optional. You can enable it to help prevent sensitive verification messages from being forwarded, or leave it disabled if you want those messages delivered normally.
+- OTP filtering is optional.
 - VANTA does not provide remote shell execution.
 
 Your SMS messages are intentionally transmitted to the Telegram destination you configure. Keep your bot token private and only authorize people you trust.
 
 ---
 
-<br/><br/>
-
-<div align="center">
-
 ### ◈ GETTING STARTED
-
-</div>
 
 **01 — Create your bot**
 
@@ -151,7 +146,7 @@ That's it. Your phone is now your SMS bridge.
 
 ### ◈ BUILT WITH
 
-<img src="https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white" /> <img src="https://img.shields.io/badge/Jetpack_Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white" /> <img src="https://img.shields.io/badge/Android-3DDC84?style=flat-square&logo=android&logoColor=white" /> <img src="https://img.shields.io/badge/Telegram_Bot_API-26A5E4?style=flat-square&logo=telegram&logoColor=white" />
+<img src="https://img.shields.io/badge/Kotlin-ffffff?style=flat-square&logo=kotlin&logoColor=000000" /> <img src="https://img.shields.io/badge/Jetpack_Compose-ffffff?style=flat-square&logo=jetpackcompose&logoColor=000000" /> <img src="https://img.shields.io/badge/Android-ffffff?style=flat-square&logo=android&logoColor=000000" /> <img src="https://img.shields.io/badge/Telegram_Bot_API-ffffff?style=flat-square&logo=telegram&logoColor=000000" />
 
 ### ◈ LICENSE
 
@@ -165,7 +160,7 @@ See [LICENSE](https://github.com/Sefeshki/VANTA/blob/main/LICENSE) for the full 
 
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:050505,50:24004f,100:050505&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
 
 **MADE BY [SEFESHKI](https://github.com/Sefeshki)**
 
