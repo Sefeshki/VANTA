@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.core.EventLogger
+import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.theme.LocalVantaColors
 
@@ -65,37 +66,38 @@ fun PrivacyProtectionScreen(
     val prefs by app.preferencesManager.preferences.collectAsState()
     val telegramConfig by app.preferencesManager.telegramConfig.collectAsState()
 
-    Scaffold(
-        containerColor = colors.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "PRIVACY & PROTECTION",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = colors.textPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.testTag("privacy_back_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = colors.textPrimary
+    EventHorizonBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "PRIVACY & PROTECTION",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = colors.textPrimary
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background)
-            )
-        }
-    ) { innerPadding ->
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.testTag("privacy_back_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = colors.textPrimary
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -255,8 +257,8 @@ fun PrivacyProtectionScreen(
                             EventLogger.clear()
                             Toast.makeText(context, "All logs cleared", Toast.LENGTH_SHORT).show()
                         },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
-                        border = BorderStroke(1.dp, colors.border),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primaryBright),
+                        border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.45f)),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().testTag("privacy_clear_logs_btn")
                     ) {
@@ -300,5 +302,6 @@ fun PrivacyProtectionScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
     }
 }

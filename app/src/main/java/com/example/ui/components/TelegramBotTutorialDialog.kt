@@ -7,6 +7,8 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,13 +49,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -65,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.ui.theme.LocalVantaColors
+import kotlinx.coroutines.launch
 
 @Composable
 fun TelegramBotTutorialDialog(
@@ -76,6 +82,14 @@ fun TelegramBotTutorialDialog(
     val colors = LocalVantaColors.current
     val context = LocalContext.current
     var currentStep by remember { mutableIntStateOf(1) }
+
+    val dialogScale = remember { Animatable(0.94f) }
+    val dialogAlpha = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        launch { dialogScale.animateTo(1f, animationSpec = tween(220, easing = FastOutSlowInEasing)) }
+        launch { dialogAlpha.animateTo(1f, animationSpec = tween(200)) }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -96,6 +110,8 @@ fun TelegramBotTutorialDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .scale(dialogScale.value)
+                .alpha(dialogAlpha.value)
                 .clip(shape)
                 .border(1.2.dp, strokeBrush, shape)
                 .testTag("telegram_bot_tutorial_dialog"),
@@ -239,7 +255,7 @@ fun TelegramBotTutorialDialog(
                                         },
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = colors.primary,
-                                            contentColor = Color.White
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
                                         ),
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
@@ -379,12 +395,12 @@ fun TelegramBotTutorialDialog(
                                 onClick = { currentStep++ },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = colors.primary,
-                                    contentColor = Color.White
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 ),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.testTag("bot_tutorial_next_btn")
                             ) {
-                                Text("NEXT")
+                                Text("NEXT", fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                             }
@@ -393,14 +409,14 @@ fun TelegramBotTutorialDialog(
                                 onClick = onDismiss,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = colors.primary,
-                                    contentColor = Color.White
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 ),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.testTag("bot_tutorial_done_btn")
                             ) {
                                 Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("DONE")
+                                Text("DONE", fontWeight = FontWeight.Bold)
                             }
                         }
                     }

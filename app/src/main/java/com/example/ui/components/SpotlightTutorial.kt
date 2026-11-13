@@ -1,8 +1,11 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -138,17 +141,31 @@ fun SpotlightTutorialOverlay(
                 .testTag("spotlight_tutorial_overlay"),
             contentAlignment = Alignment.Center
         ) {
+            val shape = RoundedCornerShape(24.dp)
+            val strokeBrush = Brush.linearGradient(
+                colors = listOf(
+                    colors.primaryBright.copy(alpha = 0.65f),
+                    colors.primaryGlow.copy(alpha = 0.35f),
+                    colors.border.copy(alpha = 0.30f)
+                )
+            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(colors.surface)
+                    .clip(shape)
+                    .background(Color(0xF20D0B18))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                colors.primaryDark.copy(alpha = 0.32f),
+                                Color(0x0A0D0B18)
+                            )
+                        )
+                    )
                     .border(
-                        width = 1.5.dp,
-                        brush = Brush.verticalGradient(
-                            listOf(colors.primaryBright, colors.borderGlow)
-                        ),
-                        shape = RoundedCornerShape(24.dp)
+                        width = 1.2.dp,
+                        brush = strokeBrush,
+                        shape = shape
                     )
                     .padding(24.dp)
             ) {
@@ -185,44 +202,55 @@ fun SpotlightTutorialOverlay(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Title and Icon
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(colors.primaryDark),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.TipsAndUpdates,
-                            contentDescription = null,
-                            tint = colors.primaryBright,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column {
+                AnimatedContent(
+                    targetState = currentStepIndex,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(180))
+                    },
+                    label = "spotlightStepAnim"
+                ) { idx ->
+                    val animatedStep = VANTA_TUTORIAL_STEPS[idx]
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Title and Icon
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.primaryDark),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.TipsAndUpdates,
+                                    contentDescription = null,
+                                    tint = colors.primaryBright,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = animatedStep.title,
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = colors.textPrimary
+                                )
+                                Text(
+                                    text = animatedStep.subtitle,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colors.primaryBright
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         Text(
-                            text = step.title,
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = colors.textPrimary
-                        )
-                        Text(
-                            text = step.subtitle,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = colors.primaryBright
+                            text = animatedStep.description,
+                            style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
+                            color = colors.textSecondary
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = step.description,
-                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 22.sp),
-                    color = colors.textSecondary
-                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 

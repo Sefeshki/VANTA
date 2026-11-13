@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
+import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
 import com.example.ui.theme.LocalVantaColors
@@ -68,53 +69,54 @@ fun SystemHealthScreen(
     val sims by app.simManager.detectedSims.collectAsState()
     val prefs by app.preferencesManager.preferences.collectAsState()
 
-    Scaffold(
-        containerColor = colors.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "SYSTEM HEALTH",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = colors.textPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.testTag("health_back_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = colors.textPrimary
+    EventHorizonBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "SYSTEM HEALTH",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = colors.textPrimary
                         )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            app.networkMonitor.refresh()
-                            app.simManager.refreshSims()
-                            app.telegramBotManager.checkConnection()
-                        },
-                        modifier = Modifier.testTag("health_refresh_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint = colors.primaryBright
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background)
-            )
-        }
-    ) { innerPadding ->
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.testTag("health_back_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = colors.textPrimary
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                app.networkMonitor.refresh()
+                                app.simManager.refreshSims()
+                                app.telegramBotManager.checkConnection()
+                            },
+                            modifier = Modifier.testTag("health_refresh_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                tint = colors.primaryBright
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -293,20 +295,21 @@ fun SystemHealthScreen(
                         onClick = onNavigateToPermissions,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colors.primary,
-                            contentColor = Color.White
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth().testTag("health_manage_permissions_btn")
                     ) {
                         Icon(imageVector = Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("OPEN PERMISSION CENTER")
+                        Text("OPEN PERMISSION CENTER", fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
     }
 }
 

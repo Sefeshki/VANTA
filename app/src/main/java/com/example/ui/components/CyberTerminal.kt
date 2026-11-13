@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
@@ -96,13 +97,27 @@ fun CyberTerminal(
     }
 
     val terminalShape = RoundedCornerShape(16.dp)
+    val terminalBorderBrush = Brush.linearGradient(
+        colors = listOf(
+            colors.primaryBright.copy(alpha = 0.45f),
+            colors.primaryGlow.copy(alpha = 0.22f),
+            colors.border.copy(alpha = 0.35f)
+        )
+    )
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(terminalShape)
-            .background(Color(0xFF07070D))
-            .border(1.dp, colors.borderGlow.copy(alpha = 0.7f), terminalShape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        colors.primaryDark.copy(alpha = 0.20f),
+                        Color(0xCC0D0B18)
+                    )
+                )
+            )
+            .border(1.dp, terminalBorderBrush, terminalShape)
             .padding(14.dp)
             .testTag("cyber_terminal")
     ) {
@@ -190,8 +205,9 @@ fun CyberTerminal(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF030305))
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0x99030307))
+                .border(1.dp, colors.primaryGlow.copy(alpha = 0.18f), RoundedCornerShape(10.dp))
                 .padding(8.dp)
         ) {
             if (filteredLogs.isEmpty()) {

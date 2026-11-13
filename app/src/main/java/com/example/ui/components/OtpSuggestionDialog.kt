@@ -1,7 +1,10 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -50,20 +55,41 @@ fun OtpSuggestionDialog(
             dismissOnClickOutside = true
         )
     ) {
+        val shape = RoundedCornerShape(22.dp)
+        val strokeBrush = Brush.linearGradient(
+            colors = listOf(
+                colors.primaryBright.copy(alpha = 0.65f),
+                colors.primaryGlow.copy(alpha = 0.35f),
+                colors.border.copy(alpha = 0.30f)
+            )
+        )
+
         Surface(
-            color = Color(0xFF101018),
-            shape = RoundedCornerShape(18.dp),
-            border = BorderStroke(1.dp, colors.borderGlow),
+            color = Color(0xF20D0B18),
+            shape = shape,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
+                .clip(shape)
+                .border(1.2.dp, strokeBrush, shape)
                 .testTag("otp_suggestion_dialog")
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                colors.primaryDark.copy(alpha = 0.32f),
+                                Color(0x0A0D0B18)
+                            )
+                        )
+                    )
                     .padding(20.dp)
             ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                 // Top header with Title and "X" Close Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -147,6 +173,7 @@ fun OtpSuggestionDialog(
                         )
                     )
                 }
+            }
             }
         }
     }

@@ -61,7 +61,9 @@ import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.data.model.SimCardInfo
 import com.example.data.model.SimSelectionMode
+import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
+import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
 import com.example.ui.theme.LocalVantaColors
 
@@ -81,52 +83,53 @@ fun SimManagementScreen(
         mutableStateOf(prefs.simSelectionMode)
     }
 
-    Scaffold(
-        containerColor = colors.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "SIM CARDS",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = colors.textPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.testTag("sim_back_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = colors.textPrimary
+    EventHorizonBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "SIM CARDS",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = colors.textPrimary
                         )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            app.simManager.refreshSims()
-                            Toast.makeText(context, "Checked SIM slots", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.testTag("sim_refresh_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh SIMs",
-                            tint = colors.primaryBright
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background)
-            )
-        }
-    ) { innerPadding ->
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.testTag("sim_back_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = colors.textPrimary
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                app.simManager.refreshSims()
+                                Toast.makeText(context, "Checked SIM slots", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.testTag("sim_refresh_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh SIMs",
+                                tint = colors.primaryBright
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -221,13 +224,11 @@ fun SimManagementScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Informational Notice on Phone Number Availability
-            Surface(
-                color = colors.surface,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, colors.border)
+            LiquidGlassCard(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     Icon(
@@ -240,7 +241,7 @@ fun SimManagementScreen(
                     Text(
                         text = "Your carrier controls whether the phone number shows up here. If it says 'NUMBER UNAVAILABLE', don't worry—VANTA still forwards your texts without a hitch using the hardware slot.",
                         style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                        color = colors.textMuted
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -275,6 +276,7 @@ fun SimManagementScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
     }
 }
 

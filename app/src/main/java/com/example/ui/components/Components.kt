@@ -189,7 +189,7 @@ fun VpnToggleSwitch(
     )
 
     val borderColor by animateColorAsState(
-        targetValue = if (isActive) colors.primaryBright else colors.border,
+        targetValue = if (isActive) colors.primaryBright else colors.primaryBright.copy(alpha = 0.35f),
         animationSpec = tween(400),
         label = "borderColor"
     )
@@ -210,21 +210,20 @@ fun VpnToggleSwitch(
                 )
         ) {
             // Outer Glowing Ring
-            if (isActive) {
-                Box(
-                    modifier = Modifier
-                        .size(180.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    colors.primary.copy(alpha = glowAlpha * 0.4f),
-                                    Color.Transparent
-                                )
+            Box(
+                modifier = Modifier
+                    .size(180.dp)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                if (isActive) colors.primary.copy(alpha = glowAlpha * 0.42f)
+                                else colors.primaryDark.copy(alpha = 0.22f),
+                                Color.Transparent
                             )
                         )
-                )
-            }
+                    )
+            )
 
             // Main Border Ring
             Box(
@@ -232,11 +231,12 @@ fun VpnToggleSwitch(
                     .size(150.dp)
                     .clip(CircleShape)
                     .border(
-                        width = if (isActive) 3.dp else 2.dp,
+                        width = if (isActive) 3.dp else 1.5.dp,
                         brush = Brush.sweepGradient(
                             listOf(
                                 borderColor,
-                                borderColor.copy(alpha = 0.4f),
+                                borderColor.copy(alpha = 0.25f),
+                                colors.primaryGlow.copy(alpha = if (isActive) 0.7f else 0.2f),
                                 borderColor
                             )
                         ),
@@ -245,8 +245,8 @@ fun VpnToggleSwitch(
                     .background(
                         Brush.radialGradient(
                             listOf(
-                                if (isActive) colors.primaryDark else colors.surfaceElevated,
-                                colors.background
+                                if (isActive) colors.primaryDark else colors.primaryDark.copy(alpha = 0.28f),
+                                Color(0xFF08070F)
                             )
                         )
                     ),
@@ -790,6 +790,31 @@ fun UpdateDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun EventHorizonBackground(
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit
+) {
+    val colors = LocalVantaColors.current
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        colors.primaryDark.copy(alpha = 0.28f),
+                        colors.primaryGlow.copy(alpha = 0.08f),
+                        Color.Transparent,
+                        colors.primaryDark.copy(alpha = 0.14f)
+                    )
+                )
+            )
+    ) {
+        content()
     }
 }
 

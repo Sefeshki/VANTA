@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -74,7 +75,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import com.example.VantaApplication
+import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
@@ -105,37 +109,38 @@ fun TelegramConfigScreen(
     var manualChatIdInput by remember { mutableStateOf("") }
     var showManualPairing by remember { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = colors.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "CONNECT TELEGRAM",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        color = colors.textPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.testTag("telegram_back_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = colors.textPrimary
+    EventHorizonBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "CONNECT TELEGRAM",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            ),
+                            color = colors.textPrimary
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.background)
-            )
-        }
-    ) { innerPadding ->
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.testTag("telegram_back_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = colors.textPrimary
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            }
+        ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -235,7 +240,7 @@ fun TelegramConfigScreen(
                                 color = colors.textPrimary
                             )
                             Text(
-                                text = "Learn how to create one in 5 steps",
+                                text = "Learn how to create one.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.primaryBright
                             )
@@ -368,7 +373,8 @@ fun TelegramConfigScreen(
                         }
                     },
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                    border = BorderStroke(1.dp, colors.primaryBright.copy(alpha = 0.45f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.primaryBright),
                     modifier = Modifier.height(46.dp)
                 ) {
                     Icon(imageVector = Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -445,8 +451,13 @@ fun TelegramConfigScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFF07070F))
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(Color(0xB307070F))
+                                    .border(
+                                        1.dp,
+                                        colors.primaryBright.copy(alpha = 0.35f),
+                                        RoundedCornerShape(14.dp)
+                                    )
                                     .padding(14.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
@@ -599,13 +610,11 @@ fun TelegramConfigScreen(
             }
 
             // Security Explanation Card
-            Surface(
-                color = colors.surface,
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, colors.border)
+            LiquidGlassCard(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(14.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     Icon(
@@ -618,13 +627,14 @@ fun TelegramConfigScreen(
                     Text(
                         text = "How we keep it secure: Your bot token is encrypted inside Android's hardware Keystore. VANTA talks directly to Telegram over secure HTTPS with zero middleman servers.",
                         style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
-                        color = colors.textMuted
+                        color = colors.textSecondary
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
     }
 
     TelegramBotTutorialDialog(

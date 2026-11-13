@@ -109,6 +109,7 @@ import com.example.core.UpdateState
 import com.example.ui.components.AnimatedHamburgerArrow
 import com.example.ui.components.CircularGithubButton
 import com.example.ui.components.CyberTerminal
+import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.OtpSuggestionDialog
@@ -202,63 +203,64 @@ fun DashboardScreen(
         UpdateManager.checkForUpdates()
     }
 
-    Scaffold(
-        containerColor = colors.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = R.drawable.vanta_icon),
-                            contentDescription = "Logo",
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
+    EventHorizonBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Image(
+                                painter = painterResource(id = R.drawable.vanta_icon),
+                                contentDescription = "Logo",
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "VANTA",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                ),
+                                color = colors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            StatusDot(
+                                isActive = prefs.isForwardingEnabled && isServiceRunning,
+                                size = 8.dp
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = onNavigateToPermissions,
+                            modifier = Modifier.testTag("dashboard_nav_permissions")
+                        ) {
+                            val hasSms = ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.RECEIVE_SMS
+                            ) == PackageManager.PERMISSION_GRANTED
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "Permissions",
+                                tint = if (hasSms) colors.success else colors.warning
+                            )
+                        }
+                        AnimatedHamburgerArrow(
+                            isOpen = isDrawerOpen,
+                            onClick = { isDrawerOpen = !isDrawerOpen },
+                            modifier = Modifier.testTag("dashboard_nav_settings")
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "VANTA",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            ),
-                            color = colors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        StatusDot(
-                            isActive = prefs.isForwardingEnabled && isServiceRunning,
-                            size = 8.dp
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = onNavigateToPermissions,
-                        modifier = Modifier.testTag("dashboard_nav_permissions")
-                    ) {
-                        val hasSms = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.RECEIVE_SMS
-                        ) == PackageManager.PERMISSION_GRANTED
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = "Permissions",
-                            tint = if (hasSms) colors.success else colors.warning
-                        )
-                    }
-                    AnimatedHamburgerArrow(
-                        isOpen = isDrawerOpen,
-                        onClick = { isDrawerOpen = !isDrawerOpen },
-                        modifier = Modifier.testTag("dashboard_nav_settings")
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
                     )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.background
                 )
-            )
-        }
-    ) { innerPadding ->
+            }
+        ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -954,6 +956,7 @@ fun DashboardScreen(
                     onCheckAgain = { UpdateManager.checkForUpdates() }
                 )
             }
+        }
         }
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.components.EventHorizonBackground
 import com.example.ui.theme.LocalVantaColors
 import kotlinx.coroutines.delay
 
@@ -65,29 +67,47 @@ fun SplashScreen(
         onSplashFinished()
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF040407))
-            .clickable { onSplashFinished() }
-            .testTag("splash_screen"),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+    EventHorizonBackground {
+        Box(
             modifier = Modifier
-                .scale(scale.value)
-                .alpha(alpha.value)
+                .fillMaxSize()
+                .clickable { onSplashFinished() }
+                .testTag("splash_screen"),
+            contentAlignment = Alignment.Center
         ) {
-            // Glowing Official Icon
-            Image(
-                painter = painterResource(id = R.drawable.vanta_icon),
-                contentDescription = "VANTA Icon",
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .size(140.dp)
-                    .clip(CircleShape)
-            )
+                    .scale(scale.value)
+                    .alpha(alpha.value)
+            ) {
+                // Glowing Official Icon with subtle radial theme halo
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(188.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(188.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    colors = listOf(
+                                        colors.primaryGlow.copy(alpha = 0.30f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                    Image(
+                        painter = painterResource(id = R.drawable.vanta_icon),
+                        contentDescription = "VANTA Icon",
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(CircleShape)
+                    )
+                }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -154,5 +174,6 @@ fun SplashScreen(
                     .testTag("splash_github_link")
             )
         }
+    }
     }
 }
