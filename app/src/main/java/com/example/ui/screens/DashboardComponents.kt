@@ -109,7 +109,7 @@ fun BoxScope.RightNavigationOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.36f))
+                .background(Color.Black.copy(alpha = 0.28f))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -156,7 +156,7 @@ fun BoxScope.RightNavigationOverlay(
                 )
                 .testTag("nav_drawer_content"),
             shape = overlayShape,
-            color = Color(0xCF020203),
+            color = Color(0xBD030305),
             tonalElevation = 0.dp
         ) {
             Column(
@@ -166,7 +166,7 @@ fun BoxScope.RightNavigationOverlay(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.White.copy(alpha = 0.03f),
-                                Color.Black.copy(alpha = 0.14f),
+                                Color.Black.copy(alpha = 0.12f),
                                 Color.White.copy(alpha = 0.02f)
                             )
                         )

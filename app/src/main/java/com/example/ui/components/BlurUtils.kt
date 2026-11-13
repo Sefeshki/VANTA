@@ -14,12 +14,12 @@ import androidx.compose.ui.graphics.asImageBitmap
  * for Android versions below API 31 where Modifier.blur() is unsupported.
  *
  * Uses downscaling paired with a multi-pass separable sliding-window box blur
- * (approximating a ~30dp Gaussian blur at ~80% intensity) in O(W*H) time.
+ * (approximating a ~28dp Gaussian blur at ~80% intensity) in O(W*H) time.
  */
 fun createBlurredBackdrop(
     source: ImageBitmap,
-    downscaleFactor: Int = 8,
-    radius: Int = 10
+    downscaleFactor: Int = 4,
+    radius: Int = 12
 ): ImageBitmap {
     val srcBitmap = source.asAndroidBitmap()
     val safeFactor = downscaleFactor.coerceAtLeast(1)
@@ -53,6 +53,47 @@ fun createBlurredBackdrop(
     }
 
     return smallBitmap.asImageBitmap()
+}
+
+/**
+ * Blurs an already-downscaled ARGB_8888 Bitmap (such as one captured via PixelCopy) in place.
+ * Returns null if the captured bitmap contains no visible non-black content so the UI never
+ * covers the live dashboard with a solid black rectangle.
+ */
+fun blurBitmapInPlace(
+    bitmap: Bitmap,
+    radius: Int = 12
+): ImageBitmap? {
+    val width = bitmap.width
+    val height = bitmap.height
+    if (width <= 0 || height <= 0) return null
+
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+    var hasVisibleContent = false
+    for (i in pixels.indices) {
+        val c = pixels[i]
+        val r = (c ushr 16) and 0xFF
+        val g = (c ushr 8) and 0xFF
+        val b = c and 0xFF
+        if (r > 8 || g > 8 || b > 8) {
+            hasVisibleContent = true
+            break
+        }
+    }
+    if (!hasVisibleContent) return null
+
+    if (radius > 0) {
+        applySeparableBoxBlur(pixels, width, height, radius, passes = 3)
+    } else {
+        for (i in pixels.indices) {
+            pixels[i] = (0xFF shl 24) or (pixels[i] and 0x00FFFFFF)
+        }
+    }
+
+    bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+    return bitmap.asImageBitmap()
 }
 
 internal fun applySeparableBoxBlur(

@@ -1,10 +1,17 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.view.PixelCopy
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -55,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,12 +110,20 @@ import com.example.ui.components.SpotlightTutorialOverlay
 import com.example.ui.components.StatusDot
 import com.example.ui.components.UpdateDialog
 import com.example.ui.components.VpnToggleSwitch
+import com.example.ui.components.blurBitmapInPlace
 import com.example.ui.components.createBlurredBackdrop
 import com.example.ui.theme.LocalVantaColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 @Composable
 fun DashboardScreen(
@@ -187,35 +203,115 @@ fun DashboardScreen(
     val isBridgeRunning = prefs.isForwardingEnabled && isServiceRunning
 
     val useNativeBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val usePixelCopyBlur = !useNativeBlur && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+    val coroutineScope = rememberCoroutineScope()
 
     // ~80% genuine GPU RenderEffect blur on Android 12+ when drawer is open
     val backdropBlur by animateDpAsState(
-        targetValue = if (useNativeBlur && isDrawerOpen) 30.dp else 0.dp,
+        targetValue = if (useNativeBlur && isDrawerOpen) 28.dp else 0.dp,
         animationSpec = tween(durationMillis = 260),
         label = "drawerBackdropBlur"
     )
 
-    // Efficient one-shot downscaled multi-pass blur fallback for Android 7–11 (API < 31)
+    // Genuine downscaled multi-pass blur fallback for Android 7–11 (API < 31)
     val dashboardGraphicsLayer = rememberGraphicsLayer()
     var fallbackBlurredBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+    var isCapturingBackdrop by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isDrawerOpen, useNativeBlur) {
-        if (!useNativeBlur) {
-            if (isDrawerOpen) {
+    fun openDrawerWithBackdropBlur() {
+        if (useNativeBlur) {
+            isDrawerOpen = true
+            return
+        }
+        if (isCapturingBackdrop) return
+
+        if (usePixelCopyBlur) {
+            val window = context.findActivity()?.window
+            val decorView = window?.decorView
+            if (window == null || decorView == null || decorView.width <= 0 || decorView.height <= 0) {
+                isDrawerOpen = true
+                return
+            }
+
+            isCapturingBackdrop = true
+            val scaledW = (decorView.width / 4).coerceAtLeast(32)
+            val scaledH = (decorView.height / 4).coerceAtLeast(32)
+            val destBitmap = Bitmap.createBitmap(scaledW, scaledH, Bitmap.Config.ARGB_8888)
+            val mainHandler = Handler(Looper.getMainLooper())
+            var finished = false
+
+            val timeoutRunnable = Runnable {
+                if (!finished) {
+                    finished = true
+                    isCapturingBackdrop = false
+                    isDrawerOpen = true
+                }
+            }
+            mainHandler.postDelayed(timeoutRunnable, 80L)
+
+            try {
+                PixelCopy.request(
+                    window,
+                    null,
+                    destBitmap,
+                    PixelCopy.OnPixelCopyFinishedListener { copyResult ->
+                        if (finished) return@OnPixelCopyFinishedListener
+                        finished = true
+                        mainHandler.removeCallbacks(timeoutRunnable)
+                        if (copyResult == PixelCopy.SUCCESS) {
+                            coroutineScope.launch {
+                                try {
+                                    val blurred = withContext(Dispatchers.Default) {
+                                        blurBitmapInPlace(destBitmap, radius = 12)
+                                    }
+                                    fallbackBlurredBitmap = blurred
+                                } catch (_: Throwable) {
+                                    fallbackBlurredBitmap = null
+                                } finally {
+                                    isCapturingBackdrop = false
+                                    isDrawerOpen = true
+                                }
+                            }
+                        } else {
+                            isCapturingBackdrop = false
+                            isDrawerOpen = true
+                        }
+                    },
+                    mainHandler
+                )
+            } catch (_: Throwable) {
+                if (!finished) {
+                    finished = true
+                    mainHandler.removeCallbacks(timeoutRunnable)
+                    isCapturingBackdrop = false
+                    isDrawerOpen = true
+                }
+            }
+        } else {
+            // API 24-25 fallback via GraphicsLayer snapshot
+            isCapturingBackdrop = true
+            coroutineScope.launch {
                 try {
                     val captured = dashboardGraphicsLayer.toImageBitmap()
                     val blurred = withContext(Dispatchers.Default) {
-                        createBlurredBackdrop(captured, downscaleFactor = 8, radius = 10)
+                        createBlurredBackdrop(captured, downscaleFactor = 4, radius = 12)
                     }
                     fallbackBlurredBitmap = blurred
                 } catch (_: Throwable) {
                     fallbackBlurredBitmap = null
+                } finally {
+                    isCapturingBackdrop = false
+                    isDrawerOpen = true
                 }
-            } else {
-                delay(280)
-                if (!isDrawerOpen) {
-                    fallbackBlurredBitmap = null
-                }
+            }
+        }
+    }
+
+    LaunchedEffect(isDrawerOpen, useNativeBlur) {
+        if (!useNativeBlur && !isDrawerOpen) {
+            delay(280)
+            if (!isDrawerOpen) {
+                fallbackBlurredBitmap = null
             }
         }
     }
@@ -252,17 +348,19 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
-                        if (useNativeBlur) {
-                            if (backdropBlur > 0.dp) {
+                        when {
+                            useNativeBlur && backdropBlur > 0.dp -> {
                                 Modifier.blur(backdropBlur, edgeTreatment = BlurredEdgeTreatment.Rectangle)
-                            } else Modifier
-                        } else {
-                            Modifier.drawWithContent {
-                                dashboardGraphicsLayer.record {
-                                    this@drawWithContent.drawContent()
-                                }
-                                drawLayer(dashboardGraphicsLayer)
                             }
+                            !useNativeBlur && !usePixelCopyBlur -> {
+                                Modifier.drawWithContent {
+                                    dashboardGraphicsLayer.record {
+                                        this@drawWithContent.drawContent()
+                                    }
+                                    drawLayer(dashboardGraphicsLayer)
+                                }
+                            }
+                            else -> Modifier
                         }
                     )
             ) {
@@ -705,7 +803,9 @@ fun DashboardScreen(
                             contentDescription = null,
                             contentScale = ContentScale.FillBounds,
                             filterQuality = FilterQuality.High,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag("fallback_blurred_backdrop")
                         )
                     }
                 }
@@ -743,7 +843,13 @@ fun DashboardScreen(
             if (hasMeasuredHamburger) {
                 AnimatedHamburgerArrow(
                     isOpen = isDrawerOpen,
-                    onClick = { isDrawerOpen = !isDrawerOpen },
+                    onClick = {
+                        if (isDrawerOpen) {
+                            isDrawerOpen = false
+                        } else {
+                            openDrawerWithBackdropBlur()
+                        }
+                    },
                     modifier = Modifier
                         .offset { IntOffset(hamburgerLocalX, hamburgerLocalY) }
                         .testTag("dashboard_nav_settings")
