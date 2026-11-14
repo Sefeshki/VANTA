@@ -77,7 +77,7 @@ object VantaWidgetUpdater {
             isForwardingActive = isForwardingActive,
             isTelegramOnline = isTelegramLive,
             isInternetOnline = isInternet,
-            simLabel = prefs.simSelectionMode.label.uppercase()
+            simLabel = prefs.simControl.summaryLabel()
         )
     }
 

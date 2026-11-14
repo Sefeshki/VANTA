@@ -27,7 +27,7 @@ import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.PermissionCenterScreen
 import com.example.ui.screens.PrivacyProtectionScreen
 import com.example.ui.screens.SettingsScreen
-import com.example.ui.screens.SimManagementScreen
+import com.example.ui.screens.SimControlScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.SystemHealthScreen
 import com.example.ui.screens.TelegramConfigScreen
@@ -118,7 +118,7 @@ fun VantaAppNavHost(
 
         composable("dashboard") {
             DashboardScreen(
-                onNavigateToSims = { navController.navigate("sim_management") },
+                onNavigateToSimControl = { navController.navigate("sim_control") },
                 onNavigateToTelegram = { navController.navigate("telegram_config") },
                 onNavigateToPermissions = { navController.navigate("permission_center") },
                 onNavigateToSettings = { navController.navigate("settings") },
@@ -128,7 +128,7 @@ fun VantaAppNavHost(
         }
 
         composable(
-            route = "sim_management",
+            route = "sim_control",
             enterTransition = {
                 slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300))
             },
@@ -136,7 +136,7 @@ fun VantaAppNavHost(
                 slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300))
             }
         ) {
-            SimManagementScreen(
+            SimControlScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

@@ -8,6 +8,8 @@ import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
 import com.example.data.model.SmsMessageItem
 import com.example.telegram.TelegramBotManager
+import com.example.telephony.ContactResolver
+import com.example.telephony.SimManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -24,7 +26,9 @@ import java.util.UUID
 
 class DeliveryQueueManager(
     private val telegramBotManager: TelegramBotManager,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val simManager: SimManager? = null,
+    private val contactResolver: ContactResolver? = null
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val mutex = Mutex()
@@ -46,7 +50,6 @@ class DeliveryQueueManager(
         val fingerprint = computeFingerprint(sms)
         val now = System.currentTimeMillis()
 
-        // Clean up old fingerprints > 15 minutes
         val cutoff = now - (15 * 60 * 1000)
         processedFingerprints.entries.removeIf { it.value < cutoff }
 
@@ -94,20 +97,28 @@ class DeliveryQueueManager(
                 }
 
                 processItem(nextItem)
-                delay(800) // Small safety delay between deliveries
+                delay(800)
             }
         }
     }
 
     private suspend fun processItem(item: DeliveryQueueItem) {
-        val simLabel = if (item.sms.simSlot >= 0) "SIM${item.sms.simSlot + 1}" else null
+        val simLabel = simManager?.formatSimDisplayLabel(item.sms.simSlot, item.sms.subId)
+            ?: if (item.sms.simSlot >= 0) "SIM ${item.sms.simSlot + 1}" else "Unknown SIM"
+        val contactName = contactResolver?.resolveContactName(item.sms.sender)
+
         item.attemptCount++
         item.lastAttemptTime = System.currentTimeMillis()
 
         val result = telegramBotManager.forwardSms(
             sender = item.sms.sender,
             body = item.sms.body,
-            simLabel = simLabel
+            simLabel = simLabel,
+            contactName = contactName,
+            receivedTimestamp = item.sms.timestamp,
+            isOtp = item.sms.isOtp,
+            simSlot = item.sms.simSlot,
+            subId = item.sms.subId
         )
 
         mutex.withLock {
@@ -127,7 +138,6 @@ class DeliveryQueueManager(
                         LogLevel.ERROR
                     )
                 } else {
-                    // Exponential backoff delay
                     val backoffDelay = (1000L * (1 shl item.attemptCount)).coerceAtMost(30000L)
                     EventLogger.log(
                         LogCategory.SMS_DELIVERY,
@@ -142,7 +152,6 @@ class DeliveryQueueManager(
     }
 
     private fun computeFingerprint(sms: SmsMessageItem): String {
-        // Round timestamp to 30 second bucket
         val timeBucket = sms.timestamp / 30000
         val raw = "${sms.sender}:${sms.body.trim()}:$timeBucket:${sms.simSlot}"
         val digest = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.UTF_8))

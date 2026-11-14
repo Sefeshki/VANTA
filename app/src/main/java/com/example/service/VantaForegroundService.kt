@@ -18,7 +18,6 @@ import com.example.VantaApplication
 import com.example.core.EventLogger
 import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
-import com.example.data.model.SimSelectionMode
 import com.example.widget.VantaWidgetUpdater
 
 class VantaForegroundService : Service() {
@@ -43,6 +42,7 @@ class VantaForegroundService : Service() {
                 EventLogger.log(LogCategory.SERVICE, "Stopping VANTA Foreground Service by user action", LogLevel.INFO)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(false)
+                app?.callMonitorManager?.stopMonitoring()
                 app?.setServiceRunning(false)
                 VantaWidgetUpdater.updateAllWidgets(this, force = true)
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -54,6 +54,7 @@ class VantaForegroundService : Service() {
                 EventLogger.log(LogCategory.SERVICE, "SMS Forwarding paused", LogLevel.WARNING)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(false)
+                app?.callMonitorManager?.stopMonitoring()
                 updateNotification()
                 VantaWidgetUpdater.updateAllWidgets(this)
                 return START_STICKY
@@ -63,6 +64,7 @@ class VantaForegroundService : Service() {
                 EventLogger.log(LogCategory.SERVICE, "SMS Forwarding resumed", LogLevel.SUCCESS)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(true)
+                app?.callMonitorManager?.startMonitoring()
                 updateNotification()
                 VantaWidgetUpdater.updateAllWidgets(this)
                 return START_STICKY
@@ -89,6 +91,7 @@ class VantaForegroundService : Service() {
         }
         val app = applicationContext as? VantaApplication
         app?.setServiceRunning(true)
+        app?.callMonitorManager?.startMonitoring()
         VantaWidgetUpdater.updateAllWidgets(this)
         EventLogger.log(LogCategory.SERVICE, "VANTA Foreground Service ACTIVE and running", LogLevel.SUCCESS)
     }
@@ -100,7 +103,7 @@ class VantaForegroundService : Service() {
 
     private fun buildNotification(): Notification {
         val app = applicationContext as? VantaApplication
-        val simMode = app?.preferencesManager?.preferences?.value?.simSelectionMode ?: SimSelectionMode.ALL
+        val simSummary = app?.preferencesManager?.preferences?.value?.simControl?.summaryLabel() ?: "SIM 1 + SIM 2"
         val telegramConfig = app?.preferencesManager?.telegramConfig?.value
 
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
@@ -159,7 +162,7 @@ class VantaForegroundService : Service() {
             "Forwarding is paused. Tap resume whenever you're ready."
         } else {
             val botStatus = if (telegramConfig?.authorizedChatId != null) "Bot connected" else "Needs pairing"
-            "Forwarding texts to Telegram • ${simMode.label} • $botStatus"
+            "Bridge active • $simSummary • $botStatus"
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -182,7 +185,7 @@ class VantaForegroundService : Service() {
                 "VANTA Bridge Status",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Keeps VANTA running in the background so you never miss an SMS"
+                description = "Keeps VANTA running in the background so you never miss an SMS or call"
                 setShowBadge(false)
             }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -215,6 +218,7 @@ class VantaForegroundService : Service() {
             e.printStackTrace()
         }
         val app = applicationContext as? VantaApplication
+        app?.callMonitorManager?.stopMonitoring()
         app?.setServiceRunning(false)
         EventLogger.log(LogCategory.SERVICE, "VANTA Foreground Service terminated", LogLevel.WARNING)
     }

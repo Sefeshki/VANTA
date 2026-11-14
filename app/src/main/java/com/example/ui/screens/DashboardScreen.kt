@@ -47,7 +47,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.outlined.Security
-import androidx.compose.material.icons.outlined.SimCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -99,10 +98,8 @@ import com.example.core.UpdateManager
 import com.example.core.UpdateState
 import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
-import com.example.data.model.SimSelectionMode
 import com.example.service.VantaForegroundService
 import com.example.ui.components.AnimatedHamburgerArrow
-import com.example.ui.components.CyberTerminal
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
 import com.example.ui.components.OtpSuggestionDialog
@@ -127,7 +124,7 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 
 @Composable
 fun DashboardScreen(
-    onNavigateToSims: () -> Unit,
+    onNavigateToSimControl: () -> Unit,
     onNavigateToTelegram: () -> Unit,
     onNavigateToPermissions: () -> Unit,
     onNavigateToSettings: () -> Unit,
@@ -152,7 +149,6 @@ fun DashboardScreen(
     val isServiceRunning by app.isServiceRunning.collectAsState()
     val pendingCount by app.deliveryQueueManager.pendingCount.collectAsState()
     val sims by app.simManager.detectedSims.collectAsState()
-    val logs by EventLogger.logs.collectAsState()
     val isBotConnected by app.telegramBotManager.isConnected.collectAsState()
 
     var showTutorial by remember { mutableStateOf(!prefs.isTutorialCompleted) }
@@ -164,6 +160,7 @@ fun DashboardScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 app.networkMonitor.refresh()
                 app.simManager.refreshSims()
+                app.callMonitorManager.refreshObserverState()
                 if (telegramConfig.hasToken) {
                     app.telegramBotManager.checkConnection()
                 }
@@ -434,7 +431,7 @@ fun DashboardScreen(
                         isTelegramReachable && isInternet
                     }
 
-                    // 2. STATUS PANEL
+                    // Status summary panel (includes SIM 1 / SIM 2 live entries & OTP warning)
                     StatusPanel(
                         isForwardingActive = prefs.isForwardingEnabled,
                         isServiceRunning = isServiceRunning,
@@ -443,7 +440,16 @@ fun DashboardScreen(
                         pendingCount = pendingCount,
                         totalDelivered = app.preferencesManager.getTotalDeliveredCount(),
                         lastDelivery = app.preferencesManager.getLastDeliveryTime(),
-                        simSelectionMode = prefs.simSelectionMode
+                        simControl = prefs.simControl,
+                        sims = sims,
+                        isOtpProtectionEnabled = prefs.isOtpProtectionEnabled,
+                        onToggleSimMaster = { slot, enabled ->
+                            app.preferencesManager.setSimMasterEnabled(slot, enabled)
+                            app.simManager.syncSelectionStateFromPreferences()
+                        },
+                        onDisableOtpProtection = {
+                            app.preferencesManager.setOtpProtectionEnabled(false)
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -536,104 +542,6 @@ fun DashboardScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // 4. SIM CONFIGURATION CARD
-                    GlowCard(
-                        onClick = onNavigateToSims,
-                        modifier = Modifier.testTag("dashboard_sim_card")
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.SimCard,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "SIM CARDS",
-                                        style = MaterialTheme.typography.labelLarge.copy(
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold
-                                        ),
-                                        color = colors.textPrimary,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                    contentDescription = "Manage SIM Cards",
-                                    tint = colors.textSecondary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            val sim1Active = prefs.simSelectionMode == SimSelectionMode.ALL || prefs.simSelectionMode == SimSelectionMode.SIM1_ONLY
-                            val sim2Active = prefs.simSelectionMode == SimSelectionMode.ALL || prefs.simSelectionMode == SimSelectionMode.SIM2_ONLY
-
-                            val sim1Info = sims.firstOrNull { it.slotIndex == 0 }
-                            val sim2Info = sims.firstOrNull { it.slotIndex == 1 }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "SIM 1: ${sim1Info?.carrierName ?: "Primary"}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (sim1Active) "ACTIVE" else "OFF",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = if (sim1Active) colors.success else colors.textMuted
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "SIM 2: ${sim2Info?.carrierName ?: "Secondary"}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (sim2Active) "ACTIVE" else "OFF",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = if (sim2Active) colors.success else colors.textMuted
-                                )
-                            }
                         }
                     }
 
@@ -746,14 +654,6 @@ fun DashboardScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    // 6. CYBER TERMINAL
-                    CyberTerminal(
-                        logs = logs,
-                        onClear = { EventLogger.clear() }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
                     Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                 }
 
@@ -822,6 +722,7 @@ fun DashboardScreen(
                 updateState = updateState,
                 onDismiss = { isDrawerOpen = false },
                 onOpenUpdateModal = { showUpdateModal = true },
+                onNavigateToSimControl = onNavigateToSimControl,
                 onNavigateToTelegram = onNavigateToTelegram,
                 onNavigateToPrivacyProtection = onNavigateToPrivacyProtection,
                 onNavigateToSystemHealth = onNavigateToSystemHealth,

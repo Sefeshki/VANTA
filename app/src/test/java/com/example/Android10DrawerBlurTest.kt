@@ -122,6 +122,7 @@ class Android10DrawerBlurTest {
                         updateState = UpdateState.Idle,
                         onDismiss = {},
                         onOpenUpdateModal = {},
+                        onNavigateToSimControl = {},
                         onNavigateToTelegram = {},
                         onNavigateToPrivacyProtection = {},
                         onNavigateToSystemHealth = {},

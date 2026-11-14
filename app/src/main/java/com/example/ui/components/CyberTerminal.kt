@@ -1,8 +1,14 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,6 +28,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -86,10 +94,13 @@ fun WoodLogIcon(
 fun CyberTerminal(
     logs: List<LogEntry>,
     onClear: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    collapsible: Boolean = false,
+    initiallyExpanded: Boolean = true
 ) {
     val colors = LocalVantaColors.current
     var selectedFilter by remember { mutableStateOf<LogCategory?>(null) }
+    var isExpanded by remember { mutableStateOf(if (collapsible) initiallyExpanded else true) }
     val listState = rememberLazyListState()
 
     val filteredLogs = remember(logs, selectedFilter) {
@@ -121,9 +132,21 @@ fun CyberTerminal(
             .padding(14.dp)
             .testTag("cyber_terminal")
     ) {
-        // Header with minimalist vector LOG emblem
+        // Header with minimalist vector LOG emblem & optional collapse toggle
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (collapsible) {
+                        Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { isExpanded = !isExpanded }
+                            .padding(vertical = 2.dp)
+                            .testTag("log_collapse_toggle")
+                    } else {
+                        Modifier
+                    }
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -141,91 +164,124 @@ fun CyberTerminal(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusDot(isActive = true, size = 6.dp)
-            }
-
-            IconButton(
-                onClick = onClear,
-                modifier = Modifier.size(32.dp).testTag("clear_terminal_btn")
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.DeleteSweep,
-                    contentDescription = "Clear Log",
-                    tint = colors.textSecondary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Filter chips row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            TerminalFilterChip(
-                label = "ALL",
-                selected = selectedFilter == null,
-                onClick = { selectedFilter = null }
-            )
-            listOf(
-                LogCategory.SMS_DELIVERY,
-                LogCategory.TELEGRAM,
-                LogCategory.SERVICE,
-                LogCategory.SIM,
-                LogCategory.SECURITY
-            ).forEach { cat ->
-                val displayLabel = when (cat) {
-                    LogCategory.SMS_DELIVERY -> "DELIVERY"
-                    LogCategory.TELEGRAM -> "TELEGRAM"
-                    LogCategory.SERVICE -> "SERVICE"
-                    LogCategory.SIM -> "SIMS"
-                    LogCategory.SECURITY -> "SECURITY"
-                    else -> cat.name
-                }
-                TerminalFilterChip(
-                    label = displayLabel,
-                    selected = selectedFilter == cat,
-                    onClick = { selectedFilter = if (selectedFilter == cat) null else cat }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Log display window
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color(0xDD000000))
-                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(10.dp))
-                .padding(8.dp)
-        ) {
-            if (filteredLogs.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(140.dp),
-                    contentAlignment = Alignment.Center
-                ) {
+                if (collapsible) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "[ ALL QUIET • WAITING FOR ACTIVITY ]",
+                        text = "${logs.size} EVENTS",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.5.sp
                         ),
                         color = colors.textMuted
                     )
                 }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    reverseLayout = true,
-                    modifier = Modifier.fillMaxWidth()
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!collapsible || isExpanded) {
+                    IconButton(
+                        onClick = onClear,
+                        modifier = Modifier.size(32.dp).testTag("clear_terminal_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.DeleteSweep,
+                            contentDescription = "Clear Log",
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                if (collapsible) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = if (isExpanded) "Collapse Log" else "Expand Log",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Filter chips row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(filteredLogs, key = { it.id }) { log ->
-                        TerminalLine(log = log)
+                    TerminalFilterChip(
+                        label = "ALL",
+                        selected = selectedFilter == null,
+                        onClick = { selectedFilter = null }
+                    )
+                    listOf(
+                        LogCategory.SMS_DELIVERY,
+                        LogCategory.TELEGRAM,
+                        LogCategory.SERVICE,
+                        LogCategory.SIM,
+                        LogCategory.CALLS,
+                        LogCategory.SECURITY
+                    ).forEach { cat ->
+                        val displayLabel = when (cat) {
+                            LogCategory.SMS_DELIVERY -> "DELIVERY"
+                            LogCategory.TELEGRAM -> "TELEGRAM"
+                            LogCategory.SERVICE -> "SERVICE"
+                            LogCategory.SIM -> "SIMS"
+                            LogCategory.CALLS -> "CALLS"
+                            LogCategory.SECURITY -> "SECURITY"
+                            else -> cat.name
+                        }
+                        TerminalFilterChip(
+                            label = displayLabel,
+                            selected = selectedFilter == cat,
+                            onClick = { selectedFilter = if (selectedFilter == cat) null else cat }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Log display window
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xDD000000))
+                        .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(10.dp))
+                        .padding(8.dp)
+                ) {
+                    if (filteredLogs.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(160.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "[ ALL QUIET • WAITING FOR ACTIVITY ]",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                color = colors.textMuted
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            reverseLayout = true,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(filteredLogs, key = { it.id }) { log ->
+                                TerminalLine(log = log)
+                            }
+                        }
                     }
                 }
             }
@@ -280,6 +336,7 @@ private fun TerminalLine(log: LogEntry) {
         LogCategory.SIM -> Color(0xFFA1A1AA)
         LogCategory.SERVICE -> Color.White
         LogCategory.SMS_DELIVERY -> colors.success
+        LogCategory.CALLS -> Color(0xFFD4D4D8)
         LogCategory.SECURITY -> Color(0xFFE4E4E7)
         LogCategory.ERROR -> colors.error
     }

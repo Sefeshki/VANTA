@@ -34,6 +34,14 @@ data class TelegramEntity(
     val url: String? = null
 )
 
+data class InlineButton(
+    val text: String,
+    val url: String? = null,
+    val callbackData: String? = null,
+    val customEmojiId: String? = null,
+    val style: String? = null
+)
+
 enum class GithubButtonMode {
     ENHANCED, // text, url, icon_custom_emoji_id, style="primary"
     STANDARD, // text, url
@@ -46,10 +54,52 @@ data class TelegramUpdate(
     val chatId: Long?,
     val userId: Long?,
     val userName: String?,
-    val text: String?
+    val text: String?,
+    val callbackQueryId: String? = null,
+    val callbackData: String? = null,
+    val callbackMessageId: Long? = null
 )
 
-class TelegramApiClient {
+interface TelegramBotApi {
+    suspend fun getMe(token: String): Result<TelegramUser>
+    suspend fun getCustomEmojiStickers(token: String, customEmojiIds: List<String>): Result<Map<String, String>>
+    suspend fun sendMessage(
+        token: String,
+        chatId: Long,
+        text: String,
+        entities: List<TelegramEntity> = emptyList(),
+        includeGithubButton: Boolean = true
+    ): Result<TelegramMessage>
+
+    suspend fun sendMessageWithKeyboard(
+        token: String,
+        chatId: Long,
+        text: String,
+        entities: List<TelegramEntity> = emptyList(),
+        keyboardRows: List<List<InlineButton>> = emptyList()
+    ): Result<TelegramMessage>
+
+    suspend fun editMessageText(
+        token: String,
+        chatId: Long,
+        messageId: Long,
+        text: String,
+        entities: List<TelegramEntity> = emptyList(),
+        keyboardRows: List<List<InlineButton>> = emptyList()
+    ): Result<Unit>
+
+    suspend fun answerCallbackQuery(
+        token: String,
+        callbackQueryId: String,
+        text: String? = null,
+        showAlert: Boolean = false
+    ): Result<Unit>
+
+    suspend fun getUpdates(token: String, offset: Long?, limit: Int = 10): Result<List<TelegramUpdate>>
+    fun sanitizeToken(raw: String): String
+}
+
+class TelegramApiClient : TelegramBotApi {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(25, TimeUnit.SECONDS)
@@ -59,7 +109,7 @@ class TelegramApiClient {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    suspend fun getMe(token: String): Result<TelegramUser> = withContext(Dispatchers.IO) {
+    override suspend fun getMe(token: String): Result<TelegramUser> = withContext(Dispatchers.IO) {
         val cleanToken = sanitizeToken(token)
         if (cleanToken.isBlank()) {
             return@withContext Result.failure(IllegalArgumentException("Bot token cannot be empty"))
@@ -109,11 +159,7 @@ class TelegramApiClient {
         }
     }
 
-    /**
-     * Retrieves sticker information for custom emoji IDs using Telegram Bot API getCustomEmojiStickers.
-     * Returns a map of custom_emoji_id -> original Unicode emoji string.
-     */
-    suspend fun getCustomEmojiStickers(
+    override suspend fun getCustomEmojiStickers(
         token: String,
         customEmojiIds: List<String>
     ): Result<Map<String, String>> = withContext(Dispatchers.IO) {
@@ -159,9 +205,6 @@ class TelegramApiClient {
         }
     }
 
-    /**
-     * Parses the result array from getCustomEmojiStickers into a map of custom_emoji_id to emoji character.
-     */
     fun parseCustomEmojiStickersResponse(jsonString: String): Map<String, String> {
         val map = mutableMapOf<String, String>()
         try {
@@ -176,13 +219,11 @@ class TelegramApiClient {
                     map[id] = emoji
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
         return map
     }
 
-    /**
-     * Builds the GitHub InlineKeyboardButton JSONObject according to button mode.
-     */
     fun buildGithubButton(mode: GithubButtonMode): JSONObject? {
         if (mode == GithubButtonMode.NONE) return null
         return JSONObject().apply {
@@ -195,15 +236,37 @@ class TelegramApiClient {
         }
     }
 
-    suspend fun sendMessage(
+    fun buildInlineKeyboardMarkup(rows: List<List<InlineButton>>): JSONObject? {
+        val nonEmptyRows = rows.filter { it.isNotEmpty() }
+        if (nonEmptyRows.isEmpty()) return null
+        val keyboard = JSONArray()
+        for (row in nonEmptyRows) {
+            val rowArr = JSONArray()
+            for (btn in row) {
+                rowArr.put(
+                    JSONObject().apply {
+                        put("text", btn.text)
+                        if (!btn.url.isNullOrBlank()) put("url", btn.url)
+                        if (!btn.callbackData.isNullOrBlank()) put("callback_data", btn.callbackData)
+                        if (!btn.customEmojiId.isNullOrBlank()) put("icon_custom_emoji_id", btn.customEmojiId)
+                        if (!btn.style.isNullOrBlank()) put("style", btn.style)
+                    }
+                )
+            }
+            keyboard.put(rowArr)
+        }
+        return JSONObject().put("inline_keyboard", keyboard)
+    }
+
+    override suspend fun sendMessage(
         token: String,
         chatId: Long,
         text: String,
-        entities: List<TelegramEntity> = emptyList(),
-        includeGithubButton: Boolean = true
+        entities: List<TelegramEntity>,
+        includeGithubButton: Boolean
     ): Result<TelegramMessage> = withContext(Dispatchers.IO) {
         val mode = if (includeGithubButton) GithubButtonMode.ENHANCED else GithubButtonMode.NONE
-        sendMessageInternal(token, chatId, text, entities, mode)
+        sendMessageInternal(token, chatId, text, entities, mode, customKeyboard = null)
     }
 
     suspend fun sendMessage(
@@ -213,7 +276,105 @@ class TelegramApiClient {
         entities: List<TelegramEntity>,
         buttonMode: GithubButtonMode
     ): Result<TelegramMessage> = withContext(Dispatchers.IO) {
-        sendMessageInternal(token, chatId, text, entities, buttonMode)
+        sendMessageInternal(token, chatId, text, entities, buttonMode, customKeyboard = null)
+    }
+
+    override suspend fun sendMessageWithKeyboard(
+        token: String,
+        chatId: Long,
+        text: String,
+        entities: List<TelegramEntity>,
+        keyboardRows: List<List<InlineButton>>
+    ): Result<TelegramMessage> = withContext(Dispatchers.IO) {
+        sendMessageInternal(
+            token = token,
+            chatId = chatId,
+            text = text,
+            entities = entities,
+            buttonMode = GithubButtonMode.NONE,
+            customKeyboard = buildInlineKeyboardMarkup(keyboardRows)
+        )
+    }
+
+    override suspend fun editMessageText(
+        token: String,
+        chatId: Long,
+        messageId: Long,
+        text: String,
+        entities: List<TelegramEntity>,
+        keyboardRows: List<List<InlineButton>>
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Bot token not configured"))
+        }
+
+        try {
+            val url = "https://api.telegram.org/bot$cleanToken/editMessageText"
+            val payload = JSONObject().apply {
+                put("chat_id", chatId)
+                put("message_id", messageId)
+                put("text", text)
+                if (entities.isNotEmpty()) {
+                    put("entities", buildEntitiesArray(entities))
+                }
+                val markup = buildInlineKeyboardMarkup(keyboardRows)
+                if (markup != null) {
+                    put("reply_markup", markup)
+                } else {
+                    put("reply_markup", JSONObject().put("inline_keyboard", JSONArray()))
+                }
+            }
+            val request = Request.Builder()
+                .url(url)
+                .post(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyString = response.body?.string() ?: ""
+                if (!response.isSuccessful) {
+                    return@withContext Result.failure(Exception(parseErrorDescription(bodyString, response.code)))
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(formatException(e))
+        }
+    }
+
+    override suspend fun answerCallbackQuery(
+        token: String,
+        callbackQueryId: String,
+        text: String?,
+        showAlert: Boolean
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Bot token not configured"))
+        }
+
+        try {
+            val url = "https://api.telegram.org/bot$cleanToken/answerCallbackQuery"
+            val payload = JSONObject().apply {
+                put("callback_query_id", callbackQueryId)
+                if (!text.isNullOrBlank()) put("text", text)
+                if (showAlert) put("show_alert", true)
+            }
+            val request = Request.Builder()
+                .url(url)
+                .post(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    val bodyString = response.body?.string() ?: ""
+                    return@withContext Result.failure(Exception(parseErrorDescription(bodyString, response.code)))
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(formatException(e))
+        }
     }
 
     private fun sendMessageInternal(
@@ -221,7 +382,8 @@ class TelegramApiClient {
         chatId: Long,
         text: String,
         entities: List<TelegramEntity>,
-        buttonMode: GithubButtonMode
+        buttonMode: GithubButtonMode,
+        customKeyboard: JSONObject?
     ): Result<TelegramMessage> {
         val cleanToken = sanitizeToken(token)
         if (cleanToken.isBlank()) {
@@ -235,33 +397,22 @@ class TelegramApiClient {
                 put("text", text)
 
                 if (entities.isNotEmpty()) {
-                    val entitiesArray = JSONArray()
-                    for (entity in entities) {
-                        val entityJson = JSONObject().apply {
-                            put("type", entity.type)
-                            put("offset", entity.offset)
-                            put("length", entity.length)
-                            if (entity.customEmojiId != null) {
-                                put("custom_emoji_id", entity.customEmojiId)
-                            }
-                            if (entity.url != null) {
-                                put("url", entity.url)
-                            }
-                        }
-                        entitiesArray.put(entityJson)
-                    }
-                    put("entities", entitiesArray)
+                    put("entities", buildEntitiesArray(entities))
                 }
 
-                val githubBtn = buildGithubButton(buttonMode)
-                if (githubBtn != null) {
-                    val replyMarkup = JSONObject()
-                    val keyboard = JSONArray()
-                    val row = JSONArray()
-                    row.put(githubBtn)
-                    keyboard.put(row)
-                    replyMarkup.put("inline_keyboard", keyboard)
-                    put("reply_markup", replyMarkup)
+                if (customKeyboard != null) {
+                    put("reply_markup", customKeyboard)
+                } else {
+                    val githubBtn = buildGithubButton(buttonMode)
+                    if (githubBtn != null) {
+                        val replyMarkup = JSONObject()
+                        val keyboard = JSONArray()
+                        val row = JSONArray()
+                        row.put(githubBtn)
+                        keyboard.put(row)
+                        replyMarkup.put("inline_keyboard", keyboard)
+                        put("reply_markup", replyMarkup)
+                    }
                 }
             }
 
@@ -274,20 +425,15 @@ class TelegramApiClient {
             client.newCall(request).execute().use { response ->
                 val bodyString = response.body?.string() ?: ""
                 if (!response.isSuccessful) {
-                    // Graceful fallback for HTTP 400 Bad Request:
-                    // If Telegram rejects enhanced button (icon_custom_emoji_id / style), fallback to standard button.
-                    // If Telegram rejects standard button, fallback to sending message without button.
-                    // Message content and entities are NEVER dropped!
-                    if (response.code == 400) {
+                    if (response.code == 400 && customKeyboard == null) {
                         when (buttonMode) {
                             GithubButtonMode.ENHANCED -> {
-                                return sendMessageInternal(cleanToken, chatId, text, entities, GithubButtonMode.STANDARD)
+                                return sendMessageInternal(cleanToken, chatId, text, entities, GithubButtonMode.STANDARD, null)
                             }
                             GithubButtonMode.STANDARD -> {
-                                return sendMessageInternal(cleanToken, chatId, text, entities, GithubButtonMode.NONE)
+                                return sendMessageInternal(cleanToken, chatId, text, entities, GithubButtonMode.NONE, null)
                             }
                             GithubButtonMode.NONE -> {
-                                // Already no button, return error below
                             }
                         }
                     }
@@ -314,7 +460,26 @@ class TelegramApiClient {
         }
     }
 
-    suspend fun getUpdates(token: String, offset: Long?, limit: Int = 10): Result<List<TelegramUpdate>> = withContext(Dispatchers.IO) {
+    private fun buildEntitiesArray(entities: List<TelegramEntity>): JSONArray {
+        val entitiesArray = JSONArray()
+        for (entity in entities) {
+            val entityJson = JSONObject().apply {
+                put("type", entity.type)
+                put("offset", entity.offset)
+                put("length", entity.length)
+                if (entity.customEmojiId != null) {
+                    put("custom_emoji_id", entity.customEmojiId)
+                }
+                if (entity.url != null) {
+                    put("url", entity.url)
+                }
+            }
+            entitiesArray.put(entityJson)
+        }
+        return entitiesArray
+    }
+
+    override suspend fun getUpdates(token: String, offset: Long?, limit: Int): Result<List<TelegramUpdate>> = withContext(Dispatchers.IO) {
         val cleanToken = sanitizeToken(token)
         if (cleanToken.isBlank()) {
             return@withContext Result.failure(IllegalArgumentException("Bot token not configured"))
@@ -343,30 +508,7 @@ class TelegramApiClient {
                 }
 
                 val updatesArray = json.getJSONArray("result")
-                val list = mutableListOf<TelegramUpdate>()
-                for (i in 0 until updatesArray.length()) {
-                    val item = updatesArray.getJSONObject(i)
-                    val updateId = item.getLong("update_id")
-                    val message = item.optJSONObject("message")
-                    val msgId = message?.optLong("message_id")
-                    val chat = message?.optJSONObject("chat")
-                    val chatId = chat?.optLong("id")
-                    val from = message?.optJSONObject("from")
-                    val userId = from?.optLong("id")
-                    val userName = if (from?.has("username") == true) from.getString("username") else null
-                    val text = if (message?.has("text") == true) message.getString("text") else null
-
-                    list.add(
-                        TelegramUpdate(
-                            updateId = updateId,
-                            messageId = msgId,
-                            chatId = chatId,
-                            userId = userId,
-                            userName = userName,
-                            text = text
-                        )
-                    )
-                }
+                val list = parseUpdatesArray(updatesArray)
                 Result.success(list)
             }
         } catch (e: Exception) {
@@ -374,7 +516,65 @@ class TelegramApiClient {
         }
     }
 
-    fun sanitizeToken(raw: String): String {
+    fun parseUpdatesArray(updatesArray: JSONArray): List<TelegramUpdate> {
+        val list = mutableListOf<TelegramUpdate>()
+        for (i in 0 until updatesArray.length()) {
+            val item = updatesArray.optJSONObject(i) ?: continue
+            val updateId = item.getLong("update_id")
+
+            val callbackQuery = item.optJSONObject("callback_query")
+            if (callbackQuery != null) {
+                val cbId = callbackQuery.optString("id", "").takeIf { it.isNotBlank() }
+                val cbData = callbackQuery.optString("data", "").takeIf { it.isNotBlank() }
+                val cbFrom = callbackQuery.optJSONObject("from")
+                val cbUserId = if (cbFrom?.has("id") == true) cbFrom.getLong("id") else null
+                val cbUserName = if (cbFrom?.has("username") == true) cbFrom.getString("username") else null
+                val cbMsg = callbackQuery.optJSONObject("message")
+                val cbMsgId = if (cbMsg?.has("message_id") == true) cbMsg.getLong("message_id") else null
+                val cbChatId = cbMsg?.optJSONObject("chat")?.let {
+                    if (it.has("id")) it.getLong("id") else null
+                }
+
+                list.add(
+                    TelegramUpdate(
+                        updateId = updateId,
+                        messageId = cbMsgId,
+                        chatId = cbChatId,
+                        userId = cbUserId,
+                        userName = cbUserName,
+                        text = null,
+                        callbackQueryId = cbId,
+                        callbackData = cbData,
+                        callbackMessageId = cbMsgId
+                    )
+                )
+                continue
+            }
+
+            val message = item.optJSONObject("message")
+            val msgId = if (message?.has("message_id") == true) message.getLong("message_id") else null
+            val chat = message?.optJSONObject("chat")
+            val chatId = if (chat?.has("id") == true) chat.getLong("id") else null
+            val from = message?.optJSONObject("from")
+            val userId = if (from?.has("id") == true) from.getLong("id") else null
+            val userName = if (from?.has("username") == true) from.getString("username") else null
+            val text = if (message?.has("text") == true) message.getString("text") else null
+
+            list.add(
+                TelegramUpdate(
+                    updateId = updateId,
+                    messageId = msgId,
+                    chatId = chatId,
+                    userId = userId,
+                    userName = userName,
+                    text = text
+                )
+            )
+        }
+        return list
+    }
+
+    override fun sanitizeToken(raw: String): String {
         var t = raw.trim()
         if (t.startsWith("https://api.telegram.org/bot", ignoreCase = true)) {
             t = t.substring(28).substringBefore("/").substringBefore("?")

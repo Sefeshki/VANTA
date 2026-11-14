@@ -33,8 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -122,41 +120,16 @@ fun SettingsScreen(
 
                 GlowCard {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Shield Login & OTP Codes",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = colors.textPrimary
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = "Prevents OTPs and one-time authentication codes from being forwarded to Telegram. Off by default.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colors.textMuted
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Switch(
-                                checked = prefs.isOtpProtectionEnabled,
-                                onCheckedChange = { app.preferencesManager.setOtpProtectionEnabled(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                                    checkedBorderColor = Color.White.copy(alpha = 0.45f),
-                                    uncheckedThumbColor = colors.textMuted,
-                                    uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
-                                    uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
-                                ),
-                                modifier = Modifier.testTag("otp_switch")
-                            )
-                        }
+                        OtpProtectionControlCard(
+                            isProtectionEnabled = prefs.isOtpProtectionEnabled,
+                            isOtpForwardingAvailable = prefs.simControl.isAnyOtpForwardingEnabled(),
+                            onToggle = { enabled ->
+                                if (prefs.simControl.isAnyOtpForwardingEnabled()) {
+                                    app.preferencesManager.setOtpProtectionEnabled(enabled)
+                                }
+                            },
+                            switchTestTag = "otp_switch"
+                        )
 
                         Spacer(modifier = Modifier.height(16.dp))
 

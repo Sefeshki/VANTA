@@ -27,8 +27,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,16 +43,22 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.SimCard
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -70,7 +76,9 @@ import com.example.BuildConfig
 import com.example.R
 import com.example.core.UpdateState
 import com.example.data.model.AppPreferences
-import com.example.data.model.SimSelectionMode
+import com.example.data.model.SimCardInfo
+import com.example.data.model.SimControlConfig
+import com.example.data.model.SimFeatureSettings
 import com.example.data.model.TelegramConfig
 import com.example.ui.components.GithubStarButton
 import com.example.ui.components.GlowCard
@@ -92,6 +100,7 @@ fun BoxScope.RightNavigationOverlay(
     updateState: UpdateState,
     onDismiss: () -> Unit,
     onOpenUpdateModal: () -> Unit,
+    onNavigateToSimControl: () -> Unit,
     onNavigateToTelegram: () -> Unit,
     onNavigateToPrivacyProtection: () -> Unit,
     onNavigateToSystemHealth: () -> Unit,
@@ -237,6 +246,19 @@ fun BoxScope.RightNavigationOverlay(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     DrawerNavItem(
+                        icon = Icons.Outlined.SimCard,
+                        title = "SIM Control",
+                        subtitle = prefs.simControl.summaryLabel() + " • Per-SIM features",
+                        onClick = {
+                            onDismiss()
+                            onNavigateToSimControl()
+                        },
+                        testTag = "drawer_nav_sim_control"
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    DrawerNavItem(
                         icon = Icons.AutoMirrored.Outlined.Send,
                         title = "Telegram Bot",
                         subtitle = if (telegramConfig.hasToken) "@${telegramConfig.botUsername ?: "bot"} • Connected" else "Configure token & chat pairing",
@@ -251,8 +273,8 @@ fun BoxScope.RightNavigationOverlay(
 
                     DrawerNavItem(
                         icon = Icons.Outlined.Shield,
-                        title = "Privacy & Protection",
-                        subtitle = if (prefs.isOtpProtectionEnabled) "OTP shield active • Keystore secure" else "OTP shield off • Keystore secure",
+                        title = "Privacy & Security",
+                        subtitle = "Keystore integrity & log purge",
                         onClick = {
                             onDismiss()
                             onNavigateToPrivacyProtection()
@@ -444,10 +466,18 @@ fun StatusPanel(
     pendingCount: Int,
     totalDelivered: Int,
     lastDelivery: Long,
-    simSelectionMode: SimSelectionMode
+    simControl: SimControlConfig,
+    sims: List<SimCardInfo> = emptyList(),
+    isOtpProtectionEnabled: Boolean = false,
+    onToggleSimMaster: (Int, Boolean) -> Unit = { _, _ -> },
+    onDisableOtpProtection: () -> Unit = {}
 ) {
     val colors = LocalVantaColors.current
     val timeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+
+    val sim1Info = sims.firstOrNull { it.slotIndex == 0 }
+    val sim2Info = sims.firstOrNull { it.slotIndex == 1 }
+    val showOtpBlockedWarning = isOtpProtectionEnabled && !simControl.isAnyOtpForwardingEnabled()
 
     GlowCard(
         modifier = Modifier.fillMaxWidth(),
@@ -470,7 +500,7 @@ fun StatusPanel(
                     color = Color.White
                 )
                 Text(
-                    text = "LISTENING: ${simSelectionMode.label.uppercase()}",
+                    text = "ACTIVE: ${simControl.summaryLabel()}",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.SemiBold,
@@ -514,6 +544,86 @@ fun StatusPanel(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(color = Color.White.copy(alpha = 0.10f), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SimLiveStatusRow(
+                slotIndex = 0,
+                simInfo = sim1Info,
+                settings = simControl.sim1,
+                isBridgeForwardingOn = isForwardingActive && isServiceRunning,
+                isGlobalOtpProtectionOn = isOtpProtectionEnabled,
+                onToggleMaster = { enabled -> onToggleSimMaster(0, enabled) }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SimLiveStatusRow(
+                slotIndex = 1,
+                simInfo = sim2Info,
+                settings = simControl.sim2,
+                isBridgeForwardingOn = isForwardingActive && isServiceRunning,
+                isGlobalOtpProtectionOn = isOtpProtectionEnabled,
+                onToggleMaster = { enabled -> onToggleSimMaster(1, enabled) }
+            )
+
+            if (showOtpBlockedWarning) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.error.copy(alpha = 0.14f))
+                        .border(1.dp, colors.error.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .testTag("live_status_otp_warning"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.WarningAmber,
+                            contentDescription = null,
+                            tint = colors.error,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "OTP forwarding blocked by protection",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = colors.error,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    TextButton(
+                        onClick = onDisableOtpProtection,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier
+                            .height(28.dp)
+                            .testTag("live_status_disable_protection_btn")
+                    ) {
+                        Text(
+                            text = "Disable protection",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             HorizontalDivider(
                 color = Color.White.copy(alpha = 0.10f),
@@ -577,6 +687,124 @@ fun StatusPanel(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SimLiveStatusRow(
+    slotIndex: Int,
+    simInfo: SimCardInfo?,
+    settings: SimFeatureSettings,
+    isBridgeForwardingOn: Boolean,
+    isGlobalOtpProtectionOn: Boolean,
+    onToggleMaster: (Boolean) -> Unit
+) {
+    val colors = LocalVantaColors.current
+    val hasPerm = simInfo?.hasPermission ?: false
+    val isAvailable = simInfo?.isAvailable ?: false
+    val isAbsent = hasPerm && !isAvailable
+
+    val dotColor = when {
+        !hasPerm -> colors.warning
+        isAbsent -> colors.textMuted
+        !settings.masterEnabled -> colors.textMuted
+        isBridgeForwardingOn -> colors.success
+        else -> Color.White.copy(alpha = 0.72f)
+    }
+    val dotActive = hasPerm && isAvailable && settings.masterEnabled
+
+    val titleText = when {
+        !hasPerm -> "SIM ${slotIndex + 1} · Permission needed"
+        isAbsent -> "SIM ${slotIndex + 1} · Unavailable"
+        else -> "SIM ${slotIndex + 1} · ${simInfo?.carrierName ?: "Unknown"}"
+    }
+
+    val featureSummary = buildString {
+        if (!settings.smsForwardingEnabled) {
+            append("SMS Off")
+        } else if (isGlobalOtpProtectionOn || !settings.otpMessagesEnabled) {
+            append("SMS Only")
+        } else {
+            append("SMS + OTP")
+        }
+        if (settings.incomingCallNotificationsEnabled || settings.callLogForwardingEnabled) {
+            append(" · Calls")
+        }
+        if (settings.smsSendingEnabled) {
+            append(" · Reply")
+        }
+    }
+
+    val statusText = when {
+        !hasPerm -> if (settings.masterEnabled) "Master ON · Grant Phone access" else "Disabled"
+        isAbsent -> "No SIM inserted"
+        !settings.masterEnabled -> "Disabled"
+        isBridgeForwardingOn -> "Active · $featureSummary"
+        else -> "Enabled · $featureSummary"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("live_status_sim_$slotIndex"),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            StatusDot(
+                isActive = dotActive,
+                size = 6.dp,
+                activeColor = dotColor,
+                inactiveColor = dotColor
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = titleText,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp
+                    ),
+                    color = if (isAbsent || !settings.masterEnabled) colors.textMuted else colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.5.sp
+                    ),
+                    color = if (!hasPerm) colors.warning else colors.textMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Switch(
+            checked = if (isAbsent) false else settings.masterEnabled,
+            enabled = !isAbsent,
+            onCheckedChange = onToggleMaster,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color.White.copy(alpha = 0.28f),
+                uncheckedThumbColor = colors.textMuted,
+                uncheckedTrackColor = colors.surfaceElevated,
+                uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
+                disabledCheckedThumbColor = colors.textMuted,
+                disabledUncheckedThumbColor = colors.textMuted.copy(alpha = 0.55f),
+                disabledUncheckedTrackColor = colors.surfaceElevated.copy(alpha = 0.55f)
+            ),
+            modifier = Modifier
+                .scale(0.72f)
+                .testTag("live_status_sim_switch_$slotIndex")
+        )
     }
 }
 

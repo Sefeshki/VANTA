@@ -26,11 +26,22 @@ class VantaUnitTest {
     fun testTelegramCustomEmojiFormatting() {
         val sender = "+12025550198"
         val body = "Hello from VANTA test"
-        val formatted = TelegramEntityHelper.formatIncomingSms(sender, body, "SIM1")
+        val timestamp = 1715000000000L
+        val formatted = TelegramEntityHelper.formatIncomingSms(
+            sender = sender,
+            body = body,
+            simLabel = "SIM 1 · CarrierA",
+            contactName = "Alice",
+            receivedTimestamp = timestamp,
+            isOtp = true
+        )
 
-        // Must contain sender, body, and separator
-        assertTrue(formatted.text.contains("By: $sender"))
-        assertTrue(formatted.text.contains(body))
+        // Must contain formatted header, sender display, SIM, Android timestamp, body, and separator
+        assertTrue(formatted.text.contains("New SMS · OTP / Verification"))
+        assertTrue(formatted.text.contains("From: Alice ($sender)"))
+        assertTrue(formatted.text.contains("SIM: SIM 1 · CarrierA"))
+        assertTrue(formatted.text.contains("Time: ${TelegramEntityHelper.formatTimestamp(timestamp)}"))
+        assertTrue(formatted.text.contains("Message:\n$body"))
         assertTrue(formatted.text.contains("━━━━━━━━━━━━━━━━━━━━"))
 
         // Check custom emoji entities

@@ -75,9 +75,9 @@ val VANTA_TUTORIAL_STEPS = listOf(
         description = "Check here to see if your phone has internet, whether Telegram is happy, which SIMs are active, and if any messages are waiting in line."
     ),
     TutorialStep(
-        title = "Pick Your SIMs",
-        subtitle = "One, the other, or both",
-        description = "Got two SIMs? Pick whichever one receives the texts you care about. If you want everything, just leave both turned on."
+        title = "SIM Control & Replies",
+        subtitle = "Per-SIM rules & Telegram replies",
+        description = "Control SIM 1 and SIM 2 independently—manage SMS forwarding, OTP filters, call logs, incoming call alerts, and reply directly from Telegram."
     ),
     TutorialStep(
         title = "Hook Up Telegram",

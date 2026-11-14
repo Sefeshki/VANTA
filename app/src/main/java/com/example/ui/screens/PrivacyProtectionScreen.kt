@@ -50,6 +50,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.core.EventLogger
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.theme.LocalVantaColors
@@ -65,6 +71,7 @@ fun PrivacyProtectionScreen(
 
     val prefs by app.preferencesManager.preferences.collectAsState()
     val telegramConfig by app.preferencesManager.telegramConfig.collectAsState()
+    val anyOtpForwardingEnabled = prefs.simControl.isAnyOtpForwardingEnabled()
 
     EventHorizonBackground {
         Scaffold(
@@ -120,57 +127,16 @@ fun PrivacyProtectionScreen(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 
-                LiquidGlassCard {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Shield,
-                                    contentDescription = null,
-                                    tint = if (prefs.isOtpProtectionEnabled) Color.White else colors.textMuted,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "Shield Login & OTP Codes",
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = colors.textPrimary
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Inspects incoming SMS content and suppresses forwarding of verification codes, banking OTPs, and two-factor tokens.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.textMuted
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Switch(
-                                checked = prefs.isOtpProtectionEnabled,
-                                onCheckedChange = { app.preferencesManager.setOtpProtectionEnabled(it) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                                    checkedBorderColor = Color.White.copy(alpha = 0.45f),
-                                    uncheckedThumbColor = colors.textMuted,
-                                    uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
-                                    uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
-                                ),
-                                modifier = Modifier.testTag("privacy_otp_switch")
-                            )
+                OtpProtectionControlCard(
+                    isProtectionEnabled = prefs.isOtpProtectionEnabled,
+                    isOtpForwardingAvailable = anyOtpForwardingEnabled,
+                    onToggle = { enabled ->
+                        if (anyOtpForwardingEnabled) {
+                            app.preferencesManager.setOtpProtectionEnabled(enabled)
                         }
-                    }
-                }
+                    },
+                    switchTestTag = "privacy_otp_switch"
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -310,6 +276,113 @@ fun PrivacyProtectionScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun OtpProtectionControlCard(
+    isProtectionEnabled: Boolean,
+    isOtpForwardingAvailable: Boolean,
+    onToggle: (Boolean) -> Unit,
+    switchTestTag: String
+) {
+    val colors = LocalVantaColors.current
+    val isLocked = !isOtpForwardingAvailable
+
+    LiquidGlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("otp_protection_card")
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .blur(if (isLocked) 3.dp else 0.dp)
+                        .alpha(if (isLocked) 0.36f else 1f),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = if (isProtectionEnabled && !isLocked) Color.White else colors.textMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Shield Login & OTP Codes",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = colors.textPrimary
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Centralized shield that blocks verification codes, banking OTPs, and 2FA tokens across all SIMs.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Switch(
+                        checked = isProtectionEnabled,
+                        enabled = !isLocked,
+                        onCheckedChange = { if (!isLocked) onToggle(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color.White.copy(alpha = 0.28f),
+                            checkedBorderColor = Color.White.copy(alpha = 0.45f),
+                            uncheckedThumbColor = colors.textMuted,
+                            uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
+                            uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
+                            disabledCheckedThumbColor = colors.textMuted,
+                            disabledCheckedTrackColor = Color.White.copy(alpha = 0.10f),
+                            disabledUncheckedThumbColor = colors.textMuted.copy(alpha = 0.6f),
+                            disabledUncheckedTrackColor = Color.White.copy(alpha = 0.05f)
+                        ),
+                        modifier = Modifier.testTag(switchTestTag)
+                    )
+                }
+
+                if (isLocked) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Black.copy(alpha = 0.45f))
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent().changes.forEach { it.consume() }
+                                    }
+                                }
+                            }
+                            .testTag("otp_protection_locked_overlay")
+                    )
+                }
+            }
+
+            if (isLocked) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Enable OTP forwarding on at least one SIM to use this feature.",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = colors.textSecondary,
+                    modifier = Modifier.testTag("otp_protection_disabled_hint")
+                )
             }
         }
     }

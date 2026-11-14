@@ -2,14 +2,13 @@ package com.example.sms
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.provider.Telephony
-import android.telephony.SmsMessage
+import android.telephony.SubscriptionManager
 import com.example.core.EventLogger
 import com.example.core.PreferencesManager
 import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
-import com.example.data.model.SimSelectionMode
+import com.example.data.model.SimFeature
 import com.example.data.model.SmsMessageItem
 import com.example.data.queue.DeliveryQueueManager
 import com.example.telephony.SimManager
@@ -20,7 +19,6 @@ class SmsProcessor(
     private val simManager: SimManager,
     private val deliveryQueueManager: DeliveryQueueManager
 ) {
-    // Regex for common OTP and authentication tokens in English, Persian, and Arabic
     private val otpPattern = Regex(
         pattern = """(?i)(\b(code|otp|verification|pin|password|security code|verify)\b|رمز|تایید|کد تایید|کد ورود|رمز یکبار مصرف|كلمة المرور|رمز التحقق)""",
         options = setOf(RegexOption.IGNORE_CASE)
@@ -32,9 +30,8 @@ class SmsProcessor(
             return
         }
 
-        // Group PDUs by sender and timestamp to handle multipart messages
         val sender = messages[0].displayOriginatingAddress ?: messages[0].originatingAddress ?: "Unknown"
-        val timestamp = messages[0].timestampMillis
+        val timestamp = messages[0].timestampMillis.takeIf { it > 0L } ?: System.currentTimeMillis()
 
         val fullBodyBuilder = StringBuilder()
         for (msg in messages) {
@@ -43,7 +40,7 @@ class SmsProcessor(
         }
         val fullBody = fullBodyBuilder.toString()
 
-        val simSlot = extractSimSlot(intent, messages[0])
+        val (simSlot, subId) = extractSimRouting(intent)
         val isOtp = isSensitiveMessage(fullBody)
 
         val smsItem = SmsMessageItem(
@@ -52,91 +49,147 @@ class SmsProcessor(
             body = fullBody,
             timestamp = timestamp,
             simSlot = simSlot,
+            subId = subId,
             isOtp = isOtp
         )
 
         handleProcessedSms(smsItem)
     }
 
-    fun handleProcessedSms(sms: SmsMessageItem) {
+    fun handleProcessedSms(sms: SmsMessageItem): Boolean {
         val prefs = preferencesManager.preferences.value
 
-        // 1. Forwarding switch check
+        // 1. Main bridge power check
         if (!prefs.isForwardingEnabled) {
             EventLogger.log(
                 LogCategory.SMS_DELIVERY,
-                "Received text from '${sms.sender}' on SIM${sms.simSlot + 1}, but forwarding is turned off",
+                "Received SMS from '${sms.sender}', but forwarding is turned off",
                 LogLevel.INFO
             )
-            return
+            return false
         }
 
-        // 2. SIM Selection Filter Check
-        if (sms.simSlot >= 0 && !simManager.isSlotEligible(sms.simSlot)) {
-            val slotName = "SIM${sms.simSlot + 1}"
-            EventLogger.log(
-                LogCategory.SIM,
-                "Text from '${sms.sender}' skipped: $slotName is not selected (${prefs.simSelectionMode.label})",
-                LogLevel.WARNING
-            )
-            return
-        }
-
-        // 3. Sensitive / OTP Message Protection Filter
+        // 2. Global OTP Protection shield
         if (sms.isOtp && prefs.isOtpProtectionEnabled) {
             EventLogger.log(
                 LogCategory.SECURITY,
-                "Code protection active: skipped forwarding login code from '${sms.sender}'",
+                "OTP Protection active: blocked verification message from '${sms.sender}'",
                 LogLevel.WARNING
             )
-            return
+            return false
         }
 
-        // 4. Enqueue for Telegram delivery
-        val enqueued = deliveryQueueManager.enqueue(sms)
+        // Resolve slot index if only subId was provided
+        val effectiveSlot = when {
+            sms.simSlot in 0..1 -> sms.simSlot
+            sms.subId >= 0 -> simManager.resolveSlotFromSubId(sms.subId)
+            else -> -1
+        }
+        val slotName = if (effectiveSlot in 0..1) "SIM ${effectiveSlot + 1}" else "Unknown SIM"
+
+        // 2. Per-SIM master switch & SMS forwarding check
+        if (effectiveSlot in 0..1) {
+            val simSettings = prefs.simControl.forSlot(effectiveSlot)
+            if (!simSettings.masterEnabled) {
+                EventLogger.log(
+                    LogCategory.SIM,
+                    "SMS from '${sms.sender}' skipped: $slotName master switch is OFF",
+                    LogLevel.WARNING
+                )
+                return false
+            }
+            if (!simSettings.smsForwardingEnabled) {
+                EventLogger.log(
+                    LogCategory.SIM,
+                    "SMS from '${sms.sender}' skipped: SMS Forwarding disabled on $slotName",
+                    LogLevel.WARNING
+                )
+                return false
+            }
+            // 3. Per-SIM OTP / Verification Messages filter
+            if (sms.isOtp && !simSettings.otpMessagesEnabled) {
+                EventLogger.log(
+                    LogCategory.SECURITY,
+                    "OTP filter active on $slotName: skipped forwarding verification message from '${sms.sender}'",
+                    LogLevel.WARNING
+                )
+                return false
+            }
+        } else {
+            // Unknown slot fallback: check if any SIM allows SMS (and OTP if OTP)
+            val sim1Allow = prefs.simControl.sim1.isFeatureEffective(SimFeature.SMS_FORWARDING) &&
+                (!sms.isOtp || prefs.simControl.sim1.isFeatureEffective(SimFeature.OTP_MESSAGES))
+            val sim2Allow = prefs.simControl.sim2.isFeatureEffective(SimFeature.SMS_FORWARDING) &&
+                (!sms.isOtp || prefs.simControl.sim2.isFeatureEffective(SimFeature.OTP_MESSAGES))
+            if (!sim1Allow && !sim2Allow) {
+                EventLogger.log(
+                    LogCategory.SIM,
+                    "SMS from '${sms.sender}' skipped by SIM filtering rules",
+                    LogLevel.WARNING
+                )
+                return false
+            }
+        }
+
+        // 4. Enqueue via single DeliveryQueueManager pipeline (preserving duplicate protection)
+        val normalizedSms = if (sms.simSlot != effectiveSlot) sms.copy(simSlot = effectiveSlot) else sms
+        val enqueued = deliveryQueueManager.enqueue(normalizedSms)
         if (enqueued) {
-            val slotDisplay = if (sms.simSlot >= 0) "SIM${sms.simSlot + 1}" else "SIM?"
             EventLogger.log(
                 LogCategory.SMS_DELIVERY,
-                "Text from '${sms.sender}' on $slotDisplay queued for Telegram",
+                "SMS from '${sms.sender}' on $slotName queued for Telegram",
                 LogLevel.INFO
             )
         }
+        return enqueued
     }
 
-    private fun extractSimSlot(intent: Intent, firstMessage: SmsMessage): Int {
-        // Try SubscriptionManager index extra
-        val subIndex = intent.getIntExtra("subscription", -1)
-            .takeIf { it != -1 }
-            ?: intent.getIntExtra("android.telephony.extra.SUBSCRIPTION_INDEX", -1)
-                .takeIf { it != -1 }
-            ?: intent.getIntExtra("simId", -1)
-                .takeIf { it != -1 }
-            ?: intent.getIntExtra("slot", -1)
+    /**
+     * Resolves (slotIndex, subId) from SMS_RECEIVED intent extras without assuming subId == slot + 1.
+     */
+    fun extractSimRouting(intent: Intent): Pair<Int, Int> {
+        val rawSubId = intent.getIntExtra("subscription", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+            .takeIf { it >= 0 }
+            ?: intent.getIntExtra("android.telephony.extra.SUBSCRIPTION_INDEX", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .takeIf { it >= 0 }
+            ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID
 
-        if (subIndex in 0..1) {
-            return subIndex
+        if (rawSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            val resolvedSlot = simManager.resolveSlotFromSubId(rawSubId)
+            if (resolvedSlot in 0..1) {
+                return resolvedSlot to rawSubId
+            }
         }
 
-        // Match against active detected SIMs if subIndex matches subId
-        val detected = simManager.detectedSims.value
-        val matchBySubId = detected.firstOrNull { it.subId == subIndex }
-        if (matchBySubId != null) {
-            return matchBySubId.slotIndex
+        val explicitSlot = intent.getIntExtra("android.telephony.extra.SLOT_INDEX", -1)
+            .takeIf { it in 0..1 }
+            ?: intent.getIntExtra("slot", -1).takeIf { it in 0..1 }
+            ?: intent.getIntExtra("simId", -1).takeIf { it in 0..1 }
+            ?: intent.getIntExtra("phone", -1).takeIf { it in 0..1 }
+
+        if (explicitSlot != null) {
+            val simForSlot = simManager.getSimForSlot(explicitSlot)
+            val resolvedSubId = if (rawSubId >= 0) rawSubId else (simForSlot?.subId ?: -1)
+            return explicitSlot to resolvedSubId
         }
 
-        // Default to SIM 1 (slot 0) if single SIM or undetected
-        return if (detected.isNotEmpty()) detected.first().slotIndex else 0
+        // Fallback if only one active SIM is available on device
+        val availableSims = simManager.detectedSims.value.filter { it.isAvailable }
+        if (availableSims.size == 1) {
+            val onlySim = availableSims.first()
+            return onlySim.slotIndex to (if (rawSubId >= 0) rawSubId else onlySim.subId)
+        }
+
+        return -1 to rawSubId
     }
 
     fun isSensitiveMessage(text: String): Boolean {
         if (otpPattern.containsMatchIn(text)) return true
-        // Check for 4 to 8 digit standalone numbers surrounded by common code terms
         val hasDigits = Regex("""[\d\u0660-\u0669\u06F0-\u06F9]{4,8}""").containsMatchIn(text)
         val hasKeyword = text.contains("code", ignoreCase = true) ||
-                text.contains("pin", ignoreCase = true) ||
-                text.contains("رمز", ignoreCase = true) ||
-                text.contains("تایید", ignoreCase = true)
+            text.contains("pin", ignoreCase = true) ||
+            text.contains("رمز", ignoreCase = true) ||
+            text.contains("تایید", ignoreCase = true)
         return hasDigits && hasKeyword
     }
 }

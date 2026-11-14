@@ -1,6 +1,11 @@
 package com.example.telegram
 
+import com.example.data.model.CallLogEntryItem
+import com.example.data.model.CallType
 import com.example.data.model.SimCardInfo
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class FormattedMessage(
     val text: String,
@@ -26,7 +31,6 @@ object TelegramEntityHelper {
         GITHUB_EMOJI_ID
     )
 
-    // Fallbacks if not yet resolved via getCustomEmojiStickers
     private val DEFAULT_EMOJI_FALLBACKS = mapOf(
         ONLINE_EMOJI_ID to "🟢",
         OFFLINE_EMOJI_ID to "🔴",
@@ -35,12 +39,8 @@ object TelegramEntityHelper {
         GITHUB_EMOJI_ID to "🐙"
     )
 
-    // Thread-safe cache holding resolved Unicode emoji characters for each custom emoji ID
     private val emojiCache = java.util.concurrent.ConcurrentHashMap<String, String>(DEFAULT_EMOJI_FALLBACKS)
 
-    /**
-     * Updates the custom emoji cache with sticker mappings returned by Telegram Bot API getCustomEmojiStickers.
-     */
     fun updateEmojiCache(map: Map<String, String>) {
         for ((id, emoji) in map) {
             if (emoji.isNotBlank()) {
@@ -49,89 +49,159 @@ object TelegramEntityHelper {
         }
     }
 
-    /**
-     * Resets the cache back to default fallbacks (useful for tests).
-     */
     fun resetEmojiCacheToDefaults() {
         emojiCache.clear()
         emojiCache.putAll(DEFAULT_EMOJI_FALLBACKS)
     }
 
-    /**
-     * Returns the exact Unicode emoji character to be covered by the custom_emoji entity.
-     * In Telegram Bot API, custom_emoji entities MUST wrap the exact Unicode emoji character
-     * corresponding to the sticker's emoji field, with exact UTF-16 code unit offset and length.
-     */
     fun getPlaceholder(customEmojiId: String): String {
         return emojiCache[customEmojiId] ?: DEFAULT_EMOJI_FALLBACKS[customEmojiId] ?: "⚡"
     }
 
+    fun formatTimestamp(timestampMillis: Long): String {
+        val formatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        return formatter.format(Date(timestampMillis))
+    }
+
+    fun formatDuration(seconds: Long): String {
+        if (seconds <= 0L) return "0s"
+        val hrs = seconds / 3600
+        val mins = (seconds % 3600) / 60
+        val secs = seconds % 60
+        return when {
+            hrs > 0 -> "${hrs}h ${mins}m ${secs}s"
+            mins > 0 -> "${mins}m ${secs}s"
+            else -> "${secs}s"
+        }
+    }
+
+    fun formatSenderDisplay(senderNumber: String, contactName: String?): String {
+        val cleanName = contactName?.trim()?.takeIf { it.isNotBlank() }
+        val cleanNum = senderNumber.trim().ifBlank { "Unknown" }
+        return if (cleanName != null && !cleanName.equals(cleanNum, ignoreCase = true)) {
+            "$cleanName ($cleanNum)"
+        } else {
+            cleanNum
+        }
+    }
+
     /**
-     * Formats incoming SMS according to the exact VANTA specification:
-     * [NEW MESSAGE CUSTOM EMOJI] New Message:
-     * By: [SENDER]
-     * [CONTEXT CUSTOM EMOJI] context:
-     * [SMS CONTENT]
-     * [SHORT SEPARATOR]
+     * Formats an incoming SMS with contact/sender display, receiving SIM label,
+     * Android SMS timestamp, OTP indicator, and message content.
      */
-    fun formatIncomingSms(sender: String, body: String, simLabel: String?): FormattedMessage {
+    fun formatIncomingSms(
+        sender: String,
+        body: String,
+        simLabel: String?,
+        contactName: String? = null,
+        receivedTimestamp: Long = System.currentTimeMillis(),
+        isOtp: Boolean = false
+    ): FormattedMessage {
         val entities = mutableListOf<TelegramEntity>()
         val sb = StringBuilder()
 
-        // 1. [NEW MESSAGE CUSTOM EMOJI] New Message:
         val newMsgPlaceholder = getPlaceholder(NEW_MESSAGE_EMOJI_ID)
         val newMsgEmojiOffset = sb.length
         sb.append(newMsgPlaceholder)
-        val newMsgEmojiLen = newMsgPlaceholder.length
         entities.add(
             TelegramEntity(
                 type = "custom_emoji",
                 offset = newMsgEmojiOffset,
-                length = newMsgEmojiLen,
+                length = newMsgPlaceholder.length,
                 customEmojiId = NEW_MESSAGE_EMOJI_ID
             )
         )
-        sb.append(" New Message")
-        if (!simLabel.isNullOrBlank()) {
-            sb.append(" (").append(simLabel).append(")")
+        sb.append(" New SMS")
+        if (isOtp) {
+            sb.append(" · OTP / Verification")
         }
-        sb.append(":\n")
+        sb.append("\n")
 
-        // 2. By: [SENDER]
-        sb.append("By: ").append(sender).append("\n\n")
+        sb.append("From: ").append(formatSenderDisplay(sender, contactName)).append("\n")
+        if (!simLabel.isNullOrBlank()) {
+            sb.append("SIM: ").append(simLabel).append("\n")
+        }
+        sb.append("Time: ").append(formatTimestamp(receivedTimestamp)).append("\n\n")
 
-        // 3. [CONTEXT CUSTOM EMOJI] context:
         val contextPlaceholder = getPlaceholder(CONTEXT_EMOJI_ID)
         val contextEmojiOffset = sb.length
         sb.append(contextPlaceholder)
-        val contextEmojiLen = contextPlaceholder.length
         entities.add(
             TelegramEntity(
                 type = "custom_emoji",
                 offset = contextEmojiOffset,
-                length = contextEmojiLen,
+                length = contextPlaceholder.length,
                 customEmojiId = CONTEXT_EMOJI_ID
             )
         )
-        sb.append(" context:\n")
-
-        // 4. [SMS CONTENT]
+        sb.append(" Message:\n")
         sb.append(body).append("\n\n")
-
-        // 5. Short mobile-friendly separator
         sb.append(SEPARATOR)
 
         return FormattedMessage(sb.toString(), entities)
     }
 
-    /**
-     * Formats /start status message according to exact VANTA specification:
-     * Activation: [ONLINE OR OFFLINE]
-     * Active Numbers:
-     * [SIM1 indicator] SIM1: [NUMBER]
-     * [SIM2 indicator] SIM2: [NUMBER]
-     * [SEPARATOR]
-     */
+    fun formatCallLogMessage(
+        entry: CallLogEntryItem,
+        simLabel: String
+    ): FormattedMessage {
+        val sb = StringBuilder()
+        val headerTag = when (entry.callType) {
+            CallType.INCOMING -> "📞 Incoming Call"
+            CallType.OUTGOING -> "📤 Outgoing Call"
+            CallType.MISSED -> "📵 Missed Call"
+            CallType.REJECTED -> "🚫 Rejected Call"
+        }
+        sb.append(headerTag).append("\n")
+        sb.append("Caller: ").append(formatSenderDisplay(entry.number, entry.contactName)).append("\n")
+        sb.append("SIM: ").append(simLabel).append("\n")
+        sb.append("Time: ").append(formatTimestamp(entry.timestamp)).append("\n")
+        if (entry.callType == CallType.INCOMING || entry.callType == CallType.OUTGOING) {
+            sb.append("Duration: ").append(formatDuration(entry.durationSeconds)).append("\n")
+        }
+        sb.append("\n").append(SEPARATOR)
+        return FormattedMessage(sb.toString(), emptyList())
+    }
+
+    fun formatIncomingCallNotification(
+        callerNumber: String?,
+        contactName: String?,
+        simLabel: String,
+        timestamp: Long = System.currentTimeMillis()
+    ): FormattedMessage {
+        val sb = StringBuilder()
+        val callerDisplay = if (callerNumber.isNullOrBlank()) {
+            "Number unavailable"
+        } else {
+            formatSenderDisplay(callerNumber, contactName)
+        }
+        sb.append("📲 Incoming Call (Ringing)\n")
+        sb.append("Caller: ").append(callerDisplay).append("\n")
+        sb.append("SIM: ").append(simLabel).append("\n")
+        sb.append("Time: ").append(formatTimestamp(timestamp)).append("\n\n")
+        sb.append(SEPARATOR)
+        return FormattedMessage(sb.toString(), emptyList())
+    }
+
+    fun formatReplyPrompt(
+        recipientAddress: String,
+        recipientName: String?,
+        selectedSimLabel: String
+    ): FormattedMessage {
+        val target = formatSenderDisplay(recipientAddress, recipientName)
+        val text = """
+            ↩️ SMS Reply Mode
+            To: $target
+            Via: $selectedSimLabel
+
+            Send your reply message now.
+            Tap a SIM button to switch SIMs, or send /cancel to abort.
+
+            $SEPARATOR
+        """.trimIndent()
+        return FormattedMessage(text, emptyList())
+    }
+
     fun formatStatusMessage(
         isOnline: Boolean,
         sims: List<SimCardInfo>,
@@ -145,12 +215,11 @@ object TelegramEntityHelper {
         val actPlaceholder = getPlaceholder(actId)
         val actOffset = sb.length
         sb.append(actPlaceholder)
-        val actLen = actPlaceholder.length
         entities.add(
             TelegramEntity(
                 type = "custom_emoji",
                 offset = actOffset,
-                length = actLen,
+                length = actPlaceholder.length,
                 customEmojiId = actId
             )
         )
@@ -164,12 +233,11 @@ object TelegramEntityHelper {
                 val simPlaceholder = getPlaceholder(SIM_INDICATOR_EMOJI_ID)
                 val simOffset = sb.length
                 sb.append(simPlaceholder)
-                val simLen = simPlaceholder.length
                 entities.add(
                     TelegramEntity(
                         type = "custom_emoji",
                         offset = simOffset,
-                        length = simLen,
+                        length = simPlaceholder.length,
                         customEmojiId = SIM_INDICATOR_EMOJI_ID
                     )
                 )
@@ -192,25 +260,22 @@ object TelegramEntityHelper {
     fun formatHelpMessage(): FormattedMessage {
         val text = """
             VANTA SMS Bridge — Help
-            
-            VANTA is a secure, source-available Android SMS-to-Telegram bridge created by Sefeshki.
-            
+
+            VANTA is a source-available Android communication bridge created by Sefeshki.
+
             Commands:
-            • /start — Verify connection and get fresh device status
-            • /status — Check live forwarding & SIM state
+            • /start — Verify connection and get live device status
+            • /status — Check forwarding & SIM state
+            • /cancel — Cancel an active SMS reply session
             • /help — Show this help message
-            
-            Security & Pairing:
-            Only authorized chat IDs can receive SMS and execute status commands.
-            Pair your device from the VANTA app on your Android phone using your personal bot token.
-            
+
+            Replying to SMS:
+            Tap Reply beneath any forwarded SMS, optionally pick SIM 1 or SIM 2, then send your message text.
+
             $SEPARATOR
         """.trimIndent()
         return FormattedMessage(text, emptyList())
     }
 
-    /**
-     * Calculates UTF-16 code units length of a string, which Telegram API requires for offsets.
-     */
     fun utf16Length(s: String): Int = s.length
 }

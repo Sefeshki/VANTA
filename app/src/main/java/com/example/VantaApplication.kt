@@ -10,8 +10,12 @@ import com.example.data.model.LogLevel
 import com.example.data.queue.DeliveryQueueManager
 import com.example.service.VantaForegroundService
 import com.example.sms.SmsProcessor
-import com.example.telephony.SimManager
 import com.example.telegram.TelegramBotManager
+import com.example.telephony.AndroidSmsGateway
+import com.example.telephony.CallMonitorManager
+import com.example.telephony.ContactResolver
+import com.example.telephony.SimManager
+import com.example.telephony.SmsGateway
 import com.example.widget.VantaWidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,9 +36,15 @@ class VantaApplication : Application() {
         private set
     lateinit var simManager: SimManager
         private set
+    lateinit var contactResolver: ContactResolver
+        private set
+    lateinit var smsGateway: SmsGateway
+        private set
     lateinit var deliveryQueueManager: DeliveryQueueManager
         private set
     lateinit var smsProcessor: SmsProcessor
+        private set
+    lateinit var callMonitorManager: CallMonitorManager
         private set
 
     private val _isServiceRunning = MutableStateFlow(false)
@@ -50,14 +60,28 @@ class VantaApplication : Application() {
         networkMonitor = NetworkMonitor(this)
         telegramBotManager = TelegramBotManager(preferencesManager)
         simManager = SimManager(this, preferencesManager)
-        deliveryQueueManager = DeliveryQueueManager(telegramBotManager, preferencesManager)
+        contactResolver = ContactResolver(this)
+        smsGateway = AndroidSmsGateway(this, simManager, preferencesManager)
+        deliveryQueueManager = DeliveryQueueManager(
+            telegramBotManager = telegramBotManager,
+            preferencesManager = preferencesManager,
+            simManager = simManager,
+            contactResolver = contactResolver
+        )
         smsProcessor = SmsProcessor(preferencesManager, simManager, deliveryQueueManager)
+        callMonitorManager = CallMonitorManager(
+            context = this,
+            preferencesManager = preferencesManager,
+            simManager = simManager,
+            contactResolver = contactResolver,
+            telegramBotManager = telegramBotManager
+        )
 
-        // Wire providers to TelegramBotManager
         telegramBotManager.simInfoProvider = { simManager.detectedSims.value }
         telegramBotManager.isForwardingActiveProvider = {
             preferencesManager.preferences.value.isForwardingEnabled && _isServiceRunning.value
         }
+        telegramBotManager.smsGateway = smsGateway
 
         val appScope = CoroutineScope(Dispatchers.IO)
 
@@ -76,7 +100,7 @@ class VantaApplication : Application() {
                 preferencesManager.preferences,
                 preferencesManager.telegramConfig
             ) { running, prefs, tgConfig ->
-                Triple(prefs.isForwardingEnabled && running, prefs.simSelectionMode, tgConfig.hasToken)
+                Triple(prefs.isForwardingEnabled && running, prefs.simControl.summaryLabel(), tgConfig.hasToken)
             }
             val networkStateFlow = combine(
                 networkMonitor.isInternetAvailable,
@@ -98,7 +122,6 @@ class VantaApplication : Application() {
 
         EventLogger.log(LogCategory.SYSTEM, "VANTA is ready", LogLevel.SUCCESS)
 
-        // If forwarding was active, resume foreground service
         if (preferencesManager.preferences.value.isForwardingEnabled) {
             VantaForegroundService.start(this)
         }
