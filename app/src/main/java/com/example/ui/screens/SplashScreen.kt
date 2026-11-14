@@ -25,9 +25,7 @@ import com.example.ui.components.VantaBlackHoleEmblem
 import kotlinx.coroutines.launch
 
 /**
- * Minimalist monochrome loading screen:
- * Pure black AMOLED void with the animated orbital black-hole vector emblem.
- * No text, no buttons, no artificial delays.
+ * Monochrome splash screen with the animated VANTA emblem.
  */
 @Composable
 fun SplashScreen(

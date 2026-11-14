@@ -21,7 +21,7 @@ import com.example.data.model.AppPreferences
 import com.example.data.model.TelegramConfig
 import com.example.ui.components.blurBitmapInPlace
 import com.example.ui.screens.RightNavigationOverlay
-import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.theme.VantaTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -101,7 +101,7 @@ class Android10DrawerBlurTest {
         val blurredBackdrop = blurBitmapInPlace(sample, radius = 12)!!
 
         composeRule.setContent {
-            MyApplicationTheme {
+            VantaTheme {
                 Box(modifier = Modifier.fillMaxSize()) {
                     Image(
                         bitmap = blurredBackdrop,

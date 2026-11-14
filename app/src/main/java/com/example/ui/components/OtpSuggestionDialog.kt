@@ -90,7 +90,7 @@ fun OtpSuggestionDialog(
                 Column(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                // Top header with Title and "X" Close Button
+                // Header row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -117,7 +117,7 @@ fun OtpSuggestionDialog(
                         )
                     }
 
-                    // "X" (close) button
+                    // Close button
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
@@ -135,7 +135,7 @@ fun OtpSuggestionDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Friendly message
+                // Description
                 Text(
                     text = "Want to keep OTPs and one-time login codes out of Telegram? Turn on message protection for an extra layer of privacy.",
                     style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 21.sp),
@@ -144,7 +144,7 @@ fun OtpSuggestionDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Small note underneath
+                // Settings hint
                 Text(
                     text = "You can always change this later in Settings.",
                     style = MaterialTheme.typography.bodySmall,
@@ -153,7 +153,7 @@ fun OtpSuggestionDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Action buttons
+                // Primary action button
                 Button(
                     onClick = onEnable,
                     colors = ButtonDefaults.buttonColors(

@@ -1,6 +1,7 @@
+
 {
   "name": "VANTA",
-  "description": "VANTA is an open-source Android SMS-to-Telegram bridge created by Sefeshki with cyberpunk aesthetics, dual-SIM filtering, real Telegram Bot API integration, and reliable background operation.",
+  "description": "VANTA is a source-available Android SMS-to-Telegram bridge created by Sefeshki, featuring dual-SIM support, message filtering, secure bot integration, and reliable background operation.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

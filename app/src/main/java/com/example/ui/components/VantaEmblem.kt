@@ -26,9 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 
 /**
- * Animated VANTA logo emblem:
- * Displays the actual VANTA logo image at the center, surrounded by monochrome
- * circular orbital motion, rotating accretion rings, and a subtle pulsing white halo.
+ * Animated monochrome VANTA emblem with rotating orbital rings and a radial pulse halo.
  */
 @Composable
 fun VantaBlackHoleEmblem(
@@ -174,7 +172,7 @@ fun VantaBlackHoleEmblem(
             }
         }
 
-        // 5. User's actual VANTA logo image as the crisp centerpiece
+        // Centered VANTA logo
         Image(
             painter = painterResource(id = R.drawable.vanta_icon),
             contentDescription = null,

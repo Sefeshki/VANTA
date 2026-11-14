@@ -8,7 +8,7 @@ data class FormattedMessage(
 )
 
 object TelegramEntityHelper {
-    // Exact Custom Emoji IDs specified by VANTA specification
+    // Telegram custom emoji IDs
     const val ONLINE_EMOJI_ID = "5470088863789622816"
     const val OFFLINE_EMOJI_ID = "5852812849780362931"
     const val SIM_INDICATOR_EMOJI_ID = "5470088863789622816"

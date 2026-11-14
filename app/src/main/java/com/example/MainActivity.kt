@@ -31,7 +31,7 @@ import com.example.ui.screens.SimManagementScreen
 import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.SystemHealthScreen
 import com.example.ui.screens.TelegramConfigScreen
-import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.theme.VantaTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         val app = applicationContext as VantaApplication
 
         setContent {
-            MyApplicationTheme {
+            VantaTheme {
                 VantaAppNavHost(
                     app = app,
                     onReapplyFullscreen = ::applyImmersiveFullscreen

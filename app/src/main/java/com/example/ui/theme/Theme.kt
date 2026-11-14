@@ -77,7 +77,7 @@ fun getMaterialColorScheme(colors: VantaColors = MonochromeVantaColors): ColorSc
 }
 
 @Composable
-fun MyApplicationTheme(
+fun VantaTheme(
     content: @Composable () -> Unit
 ) {
     val vantaColors = MonochromeVantaColors

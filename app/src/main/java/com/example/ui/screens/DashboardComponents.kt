@@ -100,7 +100,7 @@ fun BoxScope.RightNavigationOverlay(
 ) {
     val colors = LocalVantaColors.current
 
-    // Dimming backdrop scrim overlaying the underlying app including TopAppBar
+    // Backdrop dimming scrim
     AnimatedVisibility(
         visible = isOpen,
         enter = fadeIn(tween(240)),
@@ -119,7 +119,7 @@ fun BoxScope.RightNavigationOverlay(
         )
     }
 
-    // Floating Right-Side Liquid Glass Overlay (~80% width, aligned with hamburger top edge)
+    // Right navigation drawer overlay (~80% width, aligned to menu toggle)
     AnimatedVisibility(
         visible = isOpen,
         enter = slideInHorizontally(
@@ -174,7 +174,7 @@ fun BoxScope.RightNavigationOverlay(
                     .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom + WindowInsetsSides.End))
                     .padding(bottom = 16.dp)
             ) {
-                // Top row aligned cleanly with the morphed close icon at top-right
+                // Header row aligned with top-right close button
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -288,7 +288,7 @@ fun BoxScope.RightNavigationOverlay(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Centered Drawer Branding stacked below Quick Tour
+                    // Centered drawer branding
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -334,7 +334,7 @@ fun BoxScope.RightNavigationOverlay(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Bottom Menu Branding (No author name; Source Available)
+                // Drawer footer
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

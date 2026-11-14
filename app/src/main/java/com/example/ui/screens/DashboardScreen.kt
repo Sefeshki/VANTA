@@ -343,7 +343,7 @@ fun DashboardScreen(
                     rootWidthPx = coords.size.width
                 }
         ) {
-            // Underlying Fullscreen Dashboard Content (blurred when menu overlay is open)
+            // Dashboard content (blurred while navigation drawer is open)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -372,7 +372,7 @@ fun DashboardScreen(
                 ) {
                     Spacer(modifier = Modifier.height(44.dp))
 
-                    // 1. WHITE ENERGY CORE POWER SWITCH (Centered in upper space above StatusPanel)
+                    // Power toggle switch
                     VpnToggleSwitch(
                         isActive = isBridgeRunning,
                         onToggle = {
@@ -448,7 +448,7 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 3. TELEGRAM BOT SECTION (Setup card until paired; minimal single line once paired)
+                    // Telegram pairing status (full setup card until paired; single status line once paired)
                     val isTelegramFullyPaired = telegramConfig.hasToken && telegramConfig.authorizedChatId != null
                     if (!isTelegramFullyPaired) {
                         GlowCard(
@@ -757,7 +757,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                 }
 
-                // Floating top-right controls without a bulky top bar or container
+                // Top-right action controls
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -778,7 +778,7 @@ fun DashboardScreen(
                             tint = if (hasSms) colors.success else colors.warning
                         )
                     }
-                    // Exact 48.dp anchor slot for the animated hamburger / drawer close icon
+                    // Anchor slot matching the menu toggle / close icon
                     Box(
                         modifier = Modifier
                             .size(48.dp)
@@ -790,7 +790,7 @@ fun DashboardScreen(
                 }
             }
 
-            // Genuinely blurred opaque backdrop layer for Android < 12 (API < 31)
+            // Blurred backdrop bitmap fallback for API < 31
             if (!useNativeBlur) {
                 AnimatedVisibility(
                     visible = isDrawerOpen && fallbackBlurredBitmap != null,
@@ -811,7 +811,7 @@ fun DashboardScreen(
                 }
             }
 
-            // Right-Side Floating Glass Overlay (~80% width, aligned with hamburger top edge)
+            // Right-side navigation drawer
             RightNavigationOverlay(
                 isOpen = isDrawerOpen,
                 topOffsetDp = drawerTopOffsetDp,
@@ -839,7 +839,7 @@ fun DashboardScreen(
                 }
             )
 
-            // Single animated hamburger-to-arrow icon anchored in front of drawer's top-right corner
+            // Menu toggle / close button anchored above drawer top-right corner
             if (hasMeasuredHamburger) {
                 AnimatedHamburgerArrow(
                     isOpen = isDrawerOpen,
@@ -856,7 +856,7 @@ fun DashboardScreen(
                 )
             }
 
-            // Modals & Spotlight Tutorial above drawer and icon
+            // Tutorial and dialog overlays
             SpotlightTutorialOverlay(
                 isVisible = showTutorial,
                 onFinish = {
