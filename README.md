@@ -1,12 +1,10 @@
- <div align="center">
+<div align="center">
+<img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
-<img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=ANDROID%20SMS%20BRIDGE%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
+**Your phone. Your SIM. Your Telegram.**
 
-### Your phone. Your SIM. Your Telegram.
-
-A personal Android SMS-to-Telegram bridge. Turn a spare Android phone into a remotely accessible SMS gateway.
-
-**Built with Kotlin and Jetpack Compose.**
+A simple Android app that turns a spare phone into your personal SMS gateway.  
+Messages arrive on your device and get forwarded straight to Telegram — no extra servers, no third-party services.
 
 <br/>
 
@@ -17,239 +15,149 @@ A personal Android SMS-to-Telegram bridge. Turn a spare Android phone into a rem
 
 <br/><br/>
 
-**[DOWNLOAD](https://github.com/Sefeshki/VANTA/releases/latest) · [SOURCE CODE](https://github.com/Sefeshki/VANTA) · [DEVELOPER](https://github.com/Sefeshki)**
-
+[DOWNLOAD](https://github.com/Sefeshki/VANTA/releases/latest) · [SOURCE CODE](https://github.com/Sefeshki/VANTA) · [DEVELOPER](https://github.com/Sefeshki)
 </div>
 
 ---
 
-<div align="center">
+### What is VANTA?
 
-### ◈ OVERVIEW
+Got an old Android phone collecting dust? Give it a useful job.
 
-</div>
+VANTA runs on your device, connects to a Telegram bot you control, and quietly forwards incoming SMS messages to you. Everything stays on your phone and your Telegram account — nothing in between.
 
-VANTA turns an Android phone with an active SIM into an SMS gateway connected to your own Telegram bot.
+---
 
-Incoming messages are received by the phone and delivered to your configured Telegram destination. You can monitor SIM availability, manage forwarding, reply to SMS messages, and interact with your device through Telegram.
-
-VANTA runs its bridge directly on Android. It does not require a separate forwarding server.
-
-### ◈ FEATURES
+### Features
 
 <table>
 <tr>
 <td width="50%">
 
-<h3>SMS MANAGEMENT</h3>
-
-- Automatic incoming SMS forwarding
-- Individual SIM identification
-- Dual-SIM and single-SIM support
-- SIM-specific forwarding controls
-- SMS filtering and duplicate protection
-- OTP forwarding and protection settings
-- SMS replies directly through Telegram
-- Forward SMS messages to configured Telegram destinations
+#### SMS Bridge
+- Automatic forwarding of incoming SMS
+- Dual-SIM support with clear identification
+- Filter by SIM1, SIM2, or both
+- Individual SIM forwarding controls
+- Duplicate message protection
+- Reply to SMS directly from Telegram
+- Forward messages to other Telegram chats
+- Runs reliably in the background
 
 </td>
 <td width="50%">
 
-<h3>TELEGRAM INTEGRATION</h3>
-
-- Personal Telegram bot integration
-- Interactive inline keyboard navigation
-- Live service and SIM status
-- SMS Reply and Cancel interactions
-- Forward action on SMS notifications
-- Reply confirmation attached to original messages
-- Authorized Telegram user verification
-- Bot pairing and connection management
+#### Telegram
+- Works with your own Telegram bot
+- Direct connection to the official Bot API
+- Simple and secure bot pairing
+- Interactive inline keyboards
+- Reply and forward actions right from the message
+- Live SIM and service status
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-<h3>SIM INTELLIGENCE</h3>
-
-- Accurate Android subscription identification
-- SIM1 / SIM2 detection
-- Carrier information where available
-- Incoming and outgoing SIM attribution
-- SIM availability monitoring
-- Independent per-SIM configuration
-- Support for SIM changes and disconnections
+#### Privacy
+- Credentials protected with Android Keystore (AES-256-GCM)
+- HTTPS for all Telegram communication
+- Only authorized Telegram users can interact
+- Optional OTP filtering
+- Credentials cleared when you disconnect
 
 </td>
 <td width="50%">
 
-<h3>SYSTEM MONITORING</h3>
-
-- Live Internet connectivity status
-- Telegram API reachability monitoring
-- Forwarding service status
-- SIM availability monitoring
-- Service failure notifications
-- Connection recovery notifications
-- Permission status monitoring
-- Automatic startup support
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-<h3>HOME SCREEN WIDGETS</h3>
-
-- Four dedicated Android widget designs
-- Compact connectivity widget
-- Dual-SIM status widget
-- Extended status panel
-- Portrait-oriented full overview
-- Adaptive layout and resizing
-- Automatic status updates
-- No unnecessary operational controls
-
-</td>
-<td width="50%">
-
-<h3>PRIVACY & SECURITY</h3>
-
-- Android Keystore-backed encryption
-- AES-256-GCM credential protection
-- HTTPS Telegram communication
-- Authorized Telegram user checks
-- Optional OTP protection
-- Secure credential handling
-- No remote shell execution
+#### System
+- Live service monitoring
+- Connection diagnostics
+- Automatic start on boot (optional)
+- Battery optimization guidance
+- SIM and carrier information
+- Service failure & recovery notifications
+- Customizable home screen widgets
+- Friendly first-launch tutorial
 
 </td>
 </tr>
 </table>
 
-### ◈ FOUR WIDGET DESIGNS
+---
 
-VANTA includes four dedicated Android home-screen widgets. Each has its own layout rather than relying on one interface stretched across different dimensions.
+### Telegram Interaction
 
-| Widget | Size | Information |
-|:--|:--:|:--|
-| Compact | 2×1 | Internet and Telegram connectivity |
-| SIM Status | 2×2 | SIM availability and forwarding |
-| Status Panel | 4×2 | Connectivity, service, and both SIMs |
-| Full Overview | 2×4 | Detailed portrait-oriented system overview |
+Once connected, you can talk to your phone through the bot.
 
-Widgets display actual VANTA state and update as relevant system conditions change.
+Use the buttons to check service status, view SIM details, or manage forwarding. When an SMS arrives, you can reply using the original SIM or forward the message to another Telegram chat you choose. Replies appear under the original message so conversations stay easy to follow.
 
-### ◈ TELEGRAM INTERACTION
+---
 
-VANTA uses interactive Telegram buttons to make device management easier without relying on slash commands for everyday operation.
+### How it works
 
-**Message actions**
+VANTA lives on your Android phone and talks directly to the official Telegram Bot API.  
+There’s no separate server to set up or maintain.
 
-- **Reply** — Send an SMS through the Android device using its originating SIM.
-- **Forward** — Forward an SMS to another configured Telegram destination.
-- **Cancel** — Cancel an active reply session without sending anything.
+Your phone receives the SMS. As long as it has internet, the message is delivered to Telegram. Most settings and diagnostics still work offline.
 
-Successful replies are displayed beneath the original forwarded SMS, keeping the received message and response together.
+---
 
-**Management interface**
+### Security notes
 
-Use inline keyboard navigation to access available actions, including:
+Bot credentials are encrypted with Android Keystore (AES-256-GCM).  
+All communication with Telegram uses HTTPS.  
+Only the Telegram users you authorize can send commands.  
+OTP filtering is available if you want it.
 
-- Overview and live status
-- SIM information
-- Service status
-- Forwarding status
-- Available service controls
+VANTA does not give remote shell access or anything like that.  
+Your SMS messages go only to the Telegram destination you configure — so keep your bot token private and only authorize people you trust.
 
-### ◈ HOW IT WORKS
+---
 
-1. An SMS arrives on the Android device.
-2. Android identifies the receiving SIM and message timestamp.
-3. VANTA processes the message according to the configured forwarding and privacy settings.
-4. The Telegram Bot API delivers the message to the authorized destination.
-5. You can reply, forward the message, or access available management actions through Telegram.
+### Getting started
 
-SMS reception happens locally on the Android device. Telegram delivery and remote interaction require an Internet connection.
+**1. Create your bot**  
+Open [@BotFather](https://t.me/BotFather) in Telegram.  
+Send `/newbot`, pick a name and username, then copy the API token.
 
-### ◈ GETTING STARTED
+**2. Connect VANTA**  
+Install the app on your Android phone.  
+Go to Telegram Setup → paste your bot token → verify it.  
+Generate a pairing code, open your bot, and send:  
+`/start YOUR_CODE`
 
-**01 — Create a Telegram bot**
+**3. Grant permissions**  
+Open the Permission Center and allow SMS, notifications, and phone state access.  
+Set your SIM filters and check the battery optimization tips.
 
-Open [@BotFather](https://t.me/BotFather) in Telegram.
+**4. Turn it on**  
+Go back to the Dashboard and enable forwarding.
 
-Send `/newbot`, choose a bot name and username, and copy the generated API token.
+That’s it. Your phone is now your SMS bridge.
 
-**02 — Connect VANTA**
+---
 
-- Install VANTA on your Android device.
-- Open Telegram Setup.
-- Enter your bot token.
-- Verify the connection.
-- Generate your pairing code.
-- Open your bot and complete the pairing process using the displayed instructions.
-
-**03 — Configure permissions**
-
-Open Permission Center and grant the permissions required for your selected features.
-
-Configure SMS access, notifications, phone-state access, and any additional permissions requested by enabled functionality.
-
-**04 — Configure SIM Control**
-
-Choose which SIMs should be active and configure their individual forwarding options.
-
-Review OTP protection and other privacy settings.
-
-**05 — Activate**
-
-Return to the Dashboard and enable the forwarding service.
-
-Your Android device is now connected to your Telegram bot.
-
-### ◈ SYSTEM REQUIREMENTS
-
-- Android 10 or newer, subject to device and manufacturer restrictions.
-- An Android device with an active SIM for SMS reception.
-- Internet connectivity for Telegram communication.
-- A Telegram account and a bot created through BotFather.
-- Required Android permissions for the features you enable.
-
-Some functionality depends on Android version, manufacturer restrictions, carrier support, and available device hardware.
-
-### ◈ SECURITY & PRIVACY
-
-- Bot credentials are protected using Android Keystore-backed AES-256-GCM encryption.
-- Telegram communication uses HTTPS.
-- Bot interactions are restricted to authorized users.
-- OTP filtering and protection are configurable.
-- Credentials are handled securely and are not intended to appear in application logs.
-
-**Important:** SMS messages forwarded to Telegram leave the device and are delivered to the Telegram destinations you configure. Only authorize destinations and users you trust. VANTA does not make Telegram a private or end-to-end encrypted SMS storage system.
-
-### ◈ BUILT WITH
+### Built with
 
 <img src="https://img.shields.io/badge/Kotlin-ffffff?style=flat-square&logo=kotlin&logoColor=000000" /> <img src="https://img.shields.io/badge/Jetpack_Compose-ffffff?style=flat-square&logo=jetpackcompose&logoColor=000000" /> <img src="https://img.shields.io/badge/Android-ffffff?style=flat-square&logo=android&logoColor=000000" /> <img src="https://img.shields.io/badge/Telegram_Bot_API-ffffff?style=flat-square&logo=telegram&logoColor=000000" />
 
-### ◈ LICENSE
+---
 
-VANTA is **Source-Available** under the **PolyForm Noncommercial License 1.0.0**.
+### License
 
-Noncommercial use is permitted under the license terms. Commercial use requires separate permission from the author.
+VANTA is source-available under the [PolyForm Noncommercial License 1.0.0](https://github.com/Sefeshki/VANTA/blob/main/LICENSE).  
 
-See [LICENSE](https://github.com/Sefeshki/VANTA/blob/main/LICENSE) for the complete terms.
+Free for non-commercial use. Commercial use needs permission from the author.
 
 ---
 
 <div align="center">
-
 <img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
 
-**MADE BY [SEFESHKI](https://github.com/Sefeshki)**
+Made by [Sefeshki](https://github.com/Sefeshki)
 
 [GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
 
 <sub>VANTA — Your device. Your connection. Your control.</sub>
-
 </div>
