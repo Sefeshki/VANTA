@@ -3,6 +3,7 @@ package com.example.core
 import android.content.Context
 import android.content.SharedPreferences
 import com.example.data.model.AppPreferences
+import com.example.data.model.ForwardDestination
 import com.example.data.model.SimControlConfig
 import com.example.data.model.SimFeature
 import com.example.data.model.SimFeatureSettings
@@ -99,8 +100,63 @@ class PreferencesManager(context: Context) {
             botId = botId,
             authorizedChatId = authorizedChatId,
             activePairingCode = pairingCode,
-            pairingCodeExpiry = pairingExpiry
+            pairingCodeExpiry = pairingExpiry,
+            forwardDestinations = loadForwardDestinations()
         )
+    }
+
+    @Synchronized
+    fun addForwardDestination(chatId: Long, label: String) {
+        val current = loadForwardDestinations().toMutableList()
+        current.removeAll { it.chatId == chatId }
+        current.add(0, ForwardDestination(chatId = chatId, label = label.trim()))
+        saveForwardDestinations(current)
+        _telegramConfig.value = loadTelegramConfig()
+    }
+
+    @Synchronized
+    fun removeForwardDestination(chatId: Long) {
+        val current = loadForwardDestinations().filterNot { it.chatId == chatId }
+        saveForwardDestinations(current)
+        _telegramConfig.value = loadTelegramConfig()
+    }
+
+    private fun saveForwardDestinations(list: List<ForwardDestination>) {
+        val array = JSONArray()
+        for (dest in list) {
+            array.put(
+                JSONObject().apply {
+                    put("id", dest.chatId)
+                    put("label", dest.label)
+                    put("at", dest.addedAt)
+                }
+            )
+        }
+        prefs.edit().putString(KEY_FORWARD_DESTINATIONS, array.toString()).apply()
+    }
+
+    private fun loadForwardDestinations(): List<ForwardDestination> {
+        val raw = prefs.getString(KEY_FORWARD_DESTINATIONS, null) ?: return emptyList()
+        return try {
+            val array = JSONArray(raw)
+            val list = ArrayList<ForwardDestination>(array.length())
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+                val chatId = obj.optLong("id", 0L)
+                if (chatId != 0L) {
+                    list.add(
+                        ForwardDestination(
+                            chatId = chatId,
+                            label = obj.optString("label", ""),
+                            addedAt = obj.optLong("at", 0L)
+                        )
+                    )
+                }
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     fun getDecryptedBotToken(): String {
@@ -150,7 +206,9 @@ class PreferencesManager(context: Context) {
             remove(KEY_PAIRING_CODE)
             remove(KEY_PAIRING_EXPIRY)
             remove(KEY_REPLY_CONTEXTS)
+            remove(KEY_FORWARD_DESTINATIONS)
             putBoolean(KEY_FORWARDING_ENABLED, false)
+            putBoolean(KEY_SERVICE_EXPECTED_RUNNING, false)
             apply()
         }
         _telegramConfig.value = loadTelegramConfig()
@@ -248,8 +306,55 @@ class PreferencesManager(context: Context) {
         if (current.size > MAX_REPLY_CONTEXTS) {
             current.subList(MAX_REPLY_CONTEXTS, current.size).clear()
         }
+        persistReplyContexts(current)
+    }
+
+    @Synchronized
+    fun getReplyContext(contextId: String): SmsReplyContext? {
+        return loadReplyContexts().firstOrNull { it.contextId == contextId }
+    }
+
+    @Synchronized
+    fun markReplyContextForwarded(contextId: String, destinationChatId: Long) {
+        val current = loadReplyContexts().toMutableList()
+        val index = current.indexOfFirst { it.contextId == contextId }
+        if (index >= 0) {
+            val existing = current[index]
+            if (!existing.forwardedChatIds.contains(destinationChatId)) {
+                current[index] = existing.copy(
+                    forwardedChatIds = existing.forwardedChatIds + destinationChatId
+                )
+                persistReplyContexts(current)
+            }
+        }
+    }
+
+    @Synchronized
+    fun updateReplyContextNotificationId(contextId: String, notificationMessageId: Long) {
+        val current = loadReplyContexts().toMutableList()
+        val index = current.indexOfFirst { it.contextId == contextId }
+        if (index >= 0) {
+            current[index] = current[index].copy(notificationMessageId = notificationMessageId)
+            persistReplyContexts(current)
+        }
+    }
+
+    @Synchronized
+    fun appendReplyToContext(contextId: String, replyText: String): SmsReplyContext? {
+        val current = loadReplyContexts().toMutableList()
+        val index = current.indexOfFirst { it.contextId == contextId }
+        if (index < 0) return null
+        val updated = current[index].copy(
+            sentReplies = current[index].sentReplies + replyText
+        )
+        current[index] = updated
+        persistReplyContexts(current)
+        return updated
+    }
+
+    private fun persistReplyContexts(list: List<SmsReplyContext>) {
         val array = JSONArray()
-        for (item in current) {
+        for (item in list) {
             array.put(
                 JSONObject().apply {
                     put("id", item.contextId)
@@ -258,15 +363,24 @@ class PreferencesManager(context: Context) {
                     put("slot", item.simSlot)
                     put("sub", item.subId)
                     put("ts", item.receivedTimestamp)
+                    put("body", item.messageBody)
+                    put("otp", item.isOtp)
+                    if (!item.simLabel.isNullOrBlank()) put("simLabel", item.simLabel)
+                    if (item.notificationMessageId != null) put("msgId", item.notificationMessageId)
+                    if (item.forwardedChatIds.isNotEmpty()) {
+                        val fwdArr = JSONArray()
+                        item.forwardedChatIds.forEach { fwdArr.put(it) }
+                        put("fwdIds", fwdArr)
+                    }
+                    if (item.sentReplies.isNotEmpty()) {
+                        val repArr = JSONArray()
+                        item.sentReplies.forEach { repArr.put(it) }
+                        put("replies", repArr)
+                    }
                 }
             )
         }
         prefs.edit().putString(KEY_REPLY_CONTEXTS, array.toString()).apply()
-    }
-
-    @Synchronized
-    fun getReplyContext(contextId: String): SmsReplyContext? {
-        return loadReplyContexts().firstOrNull { it.contextId == contextId }
     }
 
     private fun loadReplyContexts(): List<SmsReplyContext> {
@@ -276,6 +390,22 @@ class PreferencesManager(context: Context) {
             val list = ArrayList<SmsReplyContext>(array.length())
             for (i in 0 until array.length()) {
                 val obj = array.optJSONObject(i) ?: continue
+                val fwdList = mutableListOf<Long>()
+                val fwdArr = obj.optJSONArray("fwdIds")
+                if (fwdArr != null) {
+                    for (j in 0 until fwdArr.length()) {
+                        val cid = fwdArr.optLong(j, 0L)
+                        if (cid != 0L) fwdList.add(cid)
+                    }
+                }
+                val replyList = mutableListOf<String>()
+                val repArr = obj.optJSONArray("replies")
+                if (repArr != null) {
+                    for (j in 0 until repArr.length()) {
+                        val rep = repArr.optString(j, "")
+                        if (rep.isNotEmpty()) replyList.add(rep)
+                    }
+                }
                 list.add(
                     SmsReplyContext(
                         contextId = obj.getString("id"),
@@ -283,7 +413,13 @@ class PreferencesManager(context: Context) {
                         senderName = if (obj.has("name")) obj.getString("name") else null,
                         simSlot = obj.optInt("slot", -1),
                         subId = obj.optInt("sub", -1),
-                        receivedTimestamp = obj.optLong("ts", 0L)
+                        receivedTimestamp = obj.optLong("ts", 0L),
+                        messageBody = obj.optString("body", ""),
+                        isOtp = obj.optBoolean("otp", false),
+                        forwardedChatIds = fwdList,
+                        simLabel = if (obj.has("simLabel")) obj.getString("simLabel") else null,
+                        notificationMessageId = if (obj.has("msgId")) obj.getLong("msgId") else null,
+                        sentReplies = replyList
                     )
                 )
             }
@@ -320,6 +456,52 @@ class PreferencesManager(context: Context) {
         return prefs.getBoolean(KEY_PERM_ASKED_PREFIX + permission, false)
     }
 
+    // --- Service Alert State Persistence ---
+
+    fun isServiceExpectedRunning(): Boolean = prefs.getBoolean(KEY_SERVICE_EXPECTED_RUNNING, false)
+
+    fun setServiceExpectedRunning(expected: Boolean) {
+        prefs.edit().putBoolean(KEY_SERVICE_EXPECTED_RUNNING, expected).apply()
+    }
+
+    fun wasUnexpectedServiceStopAlerted(): Boolean = prefs.getBoolean(KEY_ALERT_SERVICE_STOP, false)
+
+    fun setUnexpectedServiceStopAlerted(alerted: Boolean) {
+        prefs.edit().putBoolean(KEY_ALERT_SERVICE_STOP, alerted).apply()
+    }
+
+    fun getKnownGrantedPermissions(): Set<String> {
+        return prefs.getStringSet(KEY_KNOWN_GRANTED_PERMS, emptySet())?.toSet() ?: emptySet()
+    }
+
+    fun setKnownGrantedPermissions(permissions: Set<String>) {
+        prefs.edit().putStringSet(KEY_KNOWN_GRANTED_PERMS, permissions.toSet()).apply()
+    }
+
+    fun isPermissionAlertActive(): Boolean = prefs.getBoolean(KEY_ALERT_PERM, false)
+
+    fun setPermissionAlertActive(active: Boolean) {
+        prefs.edit().putBoolean(KEY_ALERT_PERM, active).apply()
+    }
+
+    fun isTelegramAlertActive(): Boolean = prefs.getBoolean(KEY_ALERT_TELEGRAM, false)
+
+    fun setTelegramAlertActive(active: Boolean) {
+        prefs.edit().putBoolean(KEY_ALERT_TELEGRAM, active).apply()
+    }
+
+    fun isForwardingAlertActive(): Boolean = prefs.getBoolean(KEY_ALERT_FORWARDING, false)
+
+    fun setForwardingAlertActive(active: Boolean) {
+        prefs.edit().putBoolean(KEY_ALERT_FORWARDING, active).apply()
+    }
+
+    fun isSimAlertActive(slotIndex: Int): Boolean = prefs.getBoolean("${KEY_ALERT_SIM_PREFIX}$slotIndex", false)
+
+    fun setSimAlertActive(slotIndex: Int, active: Boolean) {
+        prefs.edit().putBoolean("${KEY_ALERT_SIM_PREFIX}$slotIndex", active).apply()
+    }
+
     private fun simKey(slotIndex: Int, suffix: String): String = "sim${slotIndex}_$suffix"
 
     companion object {
@@ -340,9 +522,17 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_DELIVERY = "last_delivery_timestamp"
         private const val KEY_DELIVERY_COUNT = "delivery_count"
         private const val KEY_REPLY_CONTEXTS = "sms_reply_contexts"
+        private const val KEY_FORWARD_DESTINATIONS = "tg_forward_destinations"
         private const val KEY_LAST_CALL_LOG_ID = "last_call_log_id"
         private const val KEY_CALL_LOG_INITIALIZED = "call_log_initialized"
         private const val KEY_PERM_ASKED_PREFIX = "perm_asked_"
+        private const val KEY_SERVICE_EXPECTED_RUNNING = "service_expected_running"
+        private const val KEY_ALERT_SERVICE_STOP = "alert_service_stop"
+        private const val KEY_KNOWN_GRANTED_PERMS = "known_granted_perms"
+        private const val KEY_ALERT_PERM = "alert_perm_active"
+        private const val KEY_ALERT_TELEGRAM = "alert_telegram_active"
+        private const val KEY_ALERT_FORWARDING = "alert_forwarding_active"
+        private const val KEY_ALERT_SIM_PREFIX = "alert_sim_"
         private const val MAX_REPLY_CONTEXTS = 60
 
         private const val SUFFIX_MASTER = "master"

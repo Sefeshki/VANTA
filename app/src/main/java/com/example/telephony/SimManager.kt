@@ -2,9 +2,14 @@ package com.example.telephony
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.telecom.TelecomManager
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
@@ -32,11 +37,87 @@ class SimManager(
     private val telecomManager =
         context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val pendingRefreshRunnable = Runnable { refreshSims() }
+
     private val _detectedSims = MutableStateFlow<List<SimCardInfo>>(emptyList())
     val detectedSims: StateFlow<List<SimCardInfo>> = _detectedSims.asStateFlow()
 
+    private var subscriptionsListener: SubscriptionManager.OnSubscriptionsChangedListener? = null
+    private var simBroadcastReceiver: BroadcastReceiver? = null
+
     init {
         refreshSims()
+        registerSystemObservers()
+    }
+
+    private fun scheduleDebouncedRefresh() {
+        mainHandler.removeCallbacks(pendingRefreshRunnable)
+        mainHandler.postDelayed(pendingRefreshRunnable, REFRESH_DEBOUNCE_MS)
+    }
+
+    private fun registerSystemObservers() {
+        try {
+            val listener = object : SubscriptionManager.OnSubscriptionsChangedListener() {
+                override fun onSubscriptionsChanged() {
+                    scheduleDebouncedRefresh()
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                subscriptionManager?.addOnSubscriptionsChangedListener(
+                    ContextCompat.getMainExecutor(context),
+                    listener
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                subscriptionManager?.addOnSubscriptionsChangedListener(listener)
+            }
+            subscriptionsListener = listener
+        } catch (_: Exception) {
+        }
+
+        try {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(ctx: Context?, intent: Intent?) {
+                    val action = intent?.action ?: return
+                    if (action == ACTION_SIM_STATE_CHANGED ||
+                        action == ACTION_DEFAULT_SMS_SUB_CHANGED
+                    ) {
+                        scheduleDebouncedRefresh()
+                    }
+                }
+            }
+            val filter = IntentFilter().apply {
+                addAction(ACTION_SIM_STATE_CHANGED)
+                addAction(ACTION_DEFAULT_SMS_SUB_CHANGED)
+            }
+            ContextCompat.registerReceiver(
+                context,
+                receiver,
+                filter,
+                ContextCompat.RECEIVER_EXPORTED
+            )
+            simBroadcastReceiver = receiver
+        } catch (_: Exception) {
+        }
+    }
+
+    fun release() {
+        mainHandler.removeCallbacks(pendingRefreshRunnable)
+        subscriptionsListener?.let { listener ->
+            try {
+                subscriptionManager?.removeOnSubscriptionsChangedListener(listener)
+            } catch (_: Exception) {
+            }
+        }
+        subscriptionsListener = null
+        simBroadcastReceiver?.let { receiver ->
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (_: Exception) {
+            }
+        }
+        simBroadcastReceiver = null
     }
 
     @SuppressLint("MissingPermission")
@@ -61,12 +142,15 @@ class SimManager(
                     hasPermission = false
                 )
             }
+            val changed = _detectedSims.value != noPermList
             _detectedSims.value = noPermList
-            EventLogger.log(
-                LogCategory.SIM,
-                "SIM state limited: Phone State permission required to inspect active subscriptions",
-                LogLevel.INFO
-            )
+            if (changed) {
+                EventLogger.log(
+                    LogCategory.SIM,
+                    "SIM state limited: Phone State permission required to inspect active subscriptions",
+                    LogLevel.INFO
+                )
+            }
             return
         }
 
@@ -74,14 +158,12 @@ class SimManager(
             val subList: List<SubscriptionInfo> = subscriptionManager.activeSubscriptionInfoList.orEmpty()
             val bySlot = subList.associateBy { it.simSlotIndex }
             val slotCount = maxOf(modemCount, (bySlot.keys.maxOrNull() ?: 0) + 1).coerceIn(1, 2)
+            val defaultSmsSubId = getDefaultSmsSubIdSafe()
 
             val resultList = (0 until slotCount).map { slot ->
                 val subInfo = bySlot[slot]
                 if (subInfo != null) {
-                    val carrier = subInfo.carrierName?.toString()?.takeIf { it.isNotBlank() }
-                        ?: subInfo.displayName?.toString()?.takeIf { it.isNotBlank() }
-                        ?: "SIM ${slot + 1}"
-
+                    val carrier = resolveRealCarrierName(subInfo)
                     val icc = try {
                         @Suppress("DEPRECATION")
                         subInfo.iccId?.takeIf { it.isNotBlank() }
@@ -96,9 +178,10 @@ class SimManager(
                         phoneNumber = getPhoneNumberSafe(subInfo),
                         isAvailable = true,
                         isSelected = simControl.forSlot(slot).masterEnabled,
-                        countryIso = subInfo.countryIso,
+                        countryIso = subInfo.countryIso?.takeIf { it.isNotBlank() },
                         iccId = icc,
-                        hasPermission = true
+                        hasPermission = true,
+                        isDefaultSms = defaultSmsSubId >= 0 && subInfo.subscriptionId == defaultSmsSubId
                     )
                 } else {
                     SimCardInfo(
@@ -108,31 +191,65 @@ class SimManager(
                         phoneNumber = null,
                         isAvailable = false,
                         isSelected = simControl.forSlot(slot).masterEnabled,
-                        hasPermission = true
+                        hasPermission = true,
+                        isDefaultSms = false
                     )
                 }
             }
 
+            val previous = _detectedSims.value
             _detectedSims.value = resultList
-            val activeSummary = resultList.filter { it.isAvailable }
-                .joinToString(", ") { "SIM ${it.slotIndex + 1} (${it.carrierName}, subId=${it.subId})" }
-            EventLogger.log(
-                LogCategory.SIM,
-                if (activeSummary.isNotEmpty()) "Active SIMs: $activeSummary" else "No active SIM subscriptions detected",
-                if (activeSummary.isNotEmpty()) LogLevel.SUCCESS else LogLevel.WARNING
-            )
+            if (previous != resultList) {
+                val activeSummary = resultList.filter { it.isAvailable }
+                    .joinToString(", ") {
+                        val defaultTag = if (it.isDefaultSms) ", default SMS" else ""
+                        "SIM ${it.slotIndex + 1} (${it.carrierName}, subId=${it.subId}$defaultTag)"
+                    }
+                EventLogger.log(
+                    LogCategory.SIM,
+                    if (activeSummary.isNotEmpty()) "Active SIMs: $activeSummary" else "No active SIM subscriptions detected",
+                    if (activeSummary.isNotEmpty()) LogLevel.SUCCESS else LogLevel.WARNING
+                )
+            }
         } catch (e: Exception) {
             EventLogger.log(LogCategory.SIM, "Error inspecting SIM subscriptions: ${e.message}", LogLevel.ERROR)
+        }
+    }
+
+    private fun resolveRealCarrierName(subInfo: SubscriptionInfo): String {
+        val rawCarrier = subInfo.carrierName?.toString()?.trim()?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+        if (rawCarrier != null) return rawCarrier
+
+        val rawDisplay = subInfo.displayName?.toString()?.trim()?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+        if (rawDisplay != null) return rawDisplay
+
+        val operatorName = try {
+            telephonyManager?.createForSubscriptionId(subInfo.subscriptionId)
+                ?.simOperatorName
+                ?.trim()
+                ?.takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+        } catch (_: Exception) {
+            null
+        }
+        return operatorName ?: CARRIER_UNAVAILABLE
+    }
+
+    private fun getDefaultSmsSubIdSafe(): Int {
+        return try {
+            val id = SubscriptionManager.getDefaultSmsSubscriptionId()
+            if (id != SubscriptionManager.INVALID_SUBSCRIPTION_ID && id >= 0) id else -1
+        } catch (_: Exception) {
+            -1
         }
     }
 
     private fun getHardwareSlotCount(): Int {
         return try {
             val raw = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                telephonyManager?.activeModemCount ?: 2
+                telephonyManager?.activeModemCount ?: 1
             } else {
                 @Suppress("DEPRECATION")
-                telephonyManager?.phoneCount ?: 2
+                telephonyManager?.phoneCount ?: 1
             }
             raw.coerceIn(1, 2)
         } catch (_: Exception) {
@@ -175,9 +292,21 @@ class SimManager(
         return _detectedSims.value.firstOrNull { it.subId == subId }
     }
 
+    @SuppressLint("MissingPermission")
     fun resolveSlotFromSubId(subId: Int): Int {
         if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID || subId < 0) return -1
         getSimForSubId(subId)?.let { return it.slotIndex }
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                val activeInfo = subscriptionManager?.getActiveSubscriptionInfo(subId)
+                if (activeInfo != null && activeInfo.simSlotIndex in 0..1) {
+                    return activeInfo.simSlotIndex
+                }
+            } catch (_: Exception) {
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val slot = try {
                 SubscriptionManager.getSlotIndex(subId)
@@ -205,7 +334,6 @@ class SimManager(
         }
 
         val sims = _detectedSims.value
-        // 1. Direct numeric subId match (common on AOSP Android 10+)
         phoneAccountId.toIntOrNull()?.let { numericId ->
             val match = sims.firstOrNull { it.isAvailable && it.subId == numericId }
             if (match != null) return match.slotIndex to match.subId
@@ -213,7 +341,6 @@ class SimManager(
             if (slot in 0..1) return slot to numericId
         }
 
-        // 2. Match against ICCID prefix/full string (common on Samsung/Qualcomm/MTK)
         for (sim in sims) {
             val icc = sim.iccId
             if (!icc.isNullOrBlank() && phoneAccountId.contains(icc, ignoreCase = true)) {
@@ -221,7 +348,6 @@ class SimManager(
             }
         }
 
-        // 3. Query TelecomManager PhoneAccountHandle -> TelephonyManager.getSubscriptionId (API 30+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             telecomManager != null &&
             telephonyManager != null &&
@@ -241,7 +367,6 @@ class SimManager(
             }
         }
 
-        // 4. Single active SIM fallback when account ID is opaque
         val activeSims = sims.filter { it.isAvailable }
         return if (activeSims.size == 1) {
             activeSims.first().slotIndex to activeSims.first().subId
@@ -257,9 +382,15 @@ class SimManager(
             slotIndex >= 0 -> slotIndex + 1
             else -> null
         }
+        val validCarrier = sim?.carrierName?.takeIf {
+            sim.isAvailable &&
+                it.isNotBlank() &&
+                it != CARRIER_UNAVAILABLE &&
+                it != "Permission required" &&
+                it != "No SIM inserted"
+        }
         return when {
-            slotNum != null && sim != null && sim.isAvailable && sim.carrierName.isNotBlank() ->
-                "SIM $slotNum · ${sim.carrierName}"
+            slotNum != null && validCarrier != null -> "SIM $slotNum · $validCarrier"
             slotNum != null -> "SIM $slotNum"
             else -> "Unknown SIM"
         }
@@ -293,5 +424,12 @@ class SimManager(
             return simControl.sim1.isFeatureEffective(feature) || simControl.sim2.isFeatureEffective(feature)
         }
         return simControl.forSlot(slotIndex).isFeatureEffective(feature)
+    }
+
+    companion object {
+        const val CARRIER_UNAVAILABLE = "Carrier unavailable"
+        private const val REFRESH_DEBOUNCE_MS = 250L
+        private const val ACTION_SIM_STATE_CHANGED = "android.intent.action.SIM_STATE_CHANGED"
+        private const val ACTION_DEFAULT_SMS_SUB_CHANGED = "android.telephony.action.DEFAULT_SMS_SUBSCRIPTION_CHANGED"
     }
 }

@@ -56,6 +56,37 @@ class VantaUnitTest {
     }
 
     @Test
+    fun testTelegramTwelveHourTimestampFormatting() {
+        val originalTz = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            val calPm = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                set(2026, java.util.Calendar.NOVEMBER, 16, 14, 47, 59)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            assertEquals("02:47 PM", TelegramEntityHelper.formatTimestamp(calPm.timeInMillis))
+
+            val calAm = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                set(2026, java.util.Calendar.NOVEMBER, 16, 0, 5, 12)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            assertEquals("12:05 AM", TelegramEntityHelper.formatTimestamp(calAm.timeInMillis))
+
+            val msg = TelegramEntityHelper.formatIncomingSms(
+                sender = "+12025550101",
+                body = "Code test",
+                simLabel = "SIM 1 · CarrierA",
+                receivedTimestamp = calPm.timeInMillis
+            )
+            assertTrue(msg.text.contains("Time: 02:47 PM"))
+            assertFalse("Forwarded SMS timestamp must not include date", msg.text.contains("2026-11-16"))
+            assertFalse("Forwarded SMS timestamp must not include seconds", msg.text.contains(":59"))
+        } finally {
+            java.util.TimeZone.setDefault(originalTz)
+        }
+    }
+
+    @Test
     fun testStatusMessageFormattingOnlineAndOffline() {
         val sims = listOf(
             SimCardInfo(
@@ -376,63 +407,108 @@ class VantaUnitTest {
     }
 
     @Test
-    fun testHomeScreenWidgetRemoteViewsAndResizeAdaptation() {
+    fun testHomeScreenWidgetCollectionRemoteViewsAndResizeAdaptation() {
         val context = org.robolectric.RuntimeEnvironment.getApplication()
+        val sims = listOf(
+            SimCardInfo(
+                slotIndex = 0,
+                subId = 7,
+                carrierName = "AlphaTel",
+                phoneNumber = "+12025550101",
+                isAvailable = true,
+                isSelected = true,
+                hasPermission = true,
+                isDefaultSms = true
+            ),
+            SimCardInfo(
+                slotIndex = 1,
+                subId = -1,
+                carrierName = "No SIM inserted",
+                phoneNumber = null,
+                isAvailable = false,
+                isSelected = false,
+                hasPermission = true
+            )
+        )
+        val simControl = com.example.data.model.SimControlConfig(
+            sim1 = com.example.data.model.SimFeatureSettings(masterEnabled = true, smsForwardingEnabled = true, otpMessagesEnabled = true),
+            sim2 = com.example.data.model.SimFeatureSettings(masterEnabled = true, smsForwardingEnabled = true, otpMessagesEnabled = true)
+        )
         val activeSnapshot = com.example.widget.WidgetStatusSnapshot(
             isForwardingActive = true,
+            isServiceRunning = true,
             isTelegramOnline = true,
+            isTelegramPaired = true,
             isInternetOnline = true,
-            simLabel = "BOTH SIMS"
+            isOtpProtectionEnabled = false,
+            sims = sims,
+            simControl = simControl,
+            serviceUptimeText = "1h 15m",
+            totalDelivered = 42,
+            pendingCount = 2,
+            lastDeliveryTime = 1715000000000L
         )
 
-        val standardViews = com.example.widget.VantaWidgetUpdater.buildRemoteViews(context, activeSnapshot)
-        val inflatedStandard = standardViews.apply(context, android.widget.FrameLayout(context))
-        assertEquals(
-            "ACTIVE",
-            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_forwarding_value).text.toString()
-        )
-        assertEquals(
-            "ONLINE",
-            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_telegram_value).text.toString()
-        )
-        assertEquals(
-            "ONLINE",
-            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_internet_value).text.toString()
-        )
-        assertEquals(
-            "FORWARDING",
-            inflatedStandard.findViewById<android.widget.TextView>(R.id.widget_forwarding_label).text.toString()
-        )
-
-        // Compact narrow & ultra-short resize state
-        val compactOptions = android.os.Bundle().apply {
-            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 160)
-            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 56)
-        }
-        val offlineSnapshot = com.example.widget.WidgetStatusSnapshot(
-            isForwardingActive = false,
-            isTelegramOnline = false,
-            isInternetOnline = false,
-            simLabel = "SIM 1 ONLY"
-        )
-        val compactViews = com.example.widget.VantaWidgetUpdater.buildRemoteViews(context, offlineSnapshot, compactOptions)
+        // 1. Compact (2x1)
+        val compactViews = com.example.widget.VantaWidgetUpdater.buildCompactRemoteViews(context, activeSnapshot)
         val inflatedCompact = compactViews.apply(context, android.widget.FrameLayout(context))
-        assertEquals(
-            "OFF",
-            inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_forwarding_value).text.toString()
-        )
-        assertEquals(
-            "OFFLINE",
-            inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_telegram_value).text.toString()
-        )
-        assertEquals(
-            "FWD",
-            inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_forwarding_label).text.toString()
-        )
-        assertEquals(
-            android.view.View.GONE,
-            inflatedCompact.findViewById<android.view.View>(R.id.widget_header_row).visibility
-        )
+        assertEquals("ON", inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_compact_internet_value).text.toString())
+        assertEquals("ON", inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_compact_telegram_value).text.toString())
+        assertEquals("ACTIVE", inflatedCompact.findViewById<android.widget.TextView>(R.id.widget_compact_sublabel).text.toString())
+
+        val narrowCompactOpts = android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 120)
+        }
+        val narrowCompact = com.example.widget.VantaWidgetUpdater.buildCompactRemoteViews(context, activeSnapshot, narrowCompactOpts)
+            .apply(context, android.widget.FrameLayout(context))
+        assertEquals(android.view.View.GONE, narrowCompact.findViewById<android.view.View>(R.id.widget_compact_sublabel).visibility)
+
+        // 2. SIM Status (2x2)
+        val simViews = com.example.widget.VantaWidgetUpdater.buildSimStatusRemoteViews(context, activeSnapshot)
+            .apply(context, android.widget.FrameLayout(context))
+        assertTrue(simViews.findViewById<android.widget.TextView>(R.id.widget_sim1_title).text.toString().contains("AlphaTel"))
+        assertEquals("SMS + OTP", simViews.findViewById<android.widget.TextView>(R.id.widget_sim1_status).text.toString())
+        assertTrue(simViews.findViewById<android.widget.TextView>(R.id.widget_sim2_title).text.toString().contains("No SIM"))
+        assertEquals("Unavailable", simViews.findViewById<android.widget.TextView>(R.id.widget_sim2_status).text.toString())
+
+        // 3. Status Panel (4x2) + narrow/short resize
+        val panelViews = com.example.widget.VantaWidgetUpdater.buildStatusPanelRemoteViews(context, activeSnapshot)
+            .apply(context, android.widget.FrameLayout(context))
+        assertEquals("ONLINE", panelViews.findViewById<android.widget.TextView>(R.id.widget_panel_internet_value).text.toString())
+        assertEquals("ONLINE", panelViews.findViewById<android.widget.TextView>(R.id.widget_panel_telegram_value).text.toString())
+        assertEquals("ACTIVE", panelViews.findViewById<android.widget.TextView>(R.id.widget_panel_service_value).text.toString())
+
+        val shortNarrowOpts = android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 72)
+        }
+        val compactPanel = com.example.widget.VantaWidgetUpdater.buildStatusPanelRemoteViews(context, activeSnapshot, shortNarrowOpts)
+            .apply(context, android.widget.FrameLayout(context))
+        assertEquals(android.view.View.GONE, compactPanel.findViewById<android.view.View>(R.id.widget_panel_header).visibility)
+        assertEquals("NET", compactPanel.findViewById<android.widget.TextView>(R.id.widget_panel_internet_label).text.toString())
+
+        // 4. Full Overview (2x4 portrait layout & resize adaptation)
+        val overviewViews = com.example.widget.VantaWidgetUpdater.buildOverviewRemoteViews(context, activeSnapshot)
+            .apply(context, android.widget.FrameLayout(context))
+        assertEquals("UPTIME 1h 15m", overviewViews.findViewById<android.widget.TextView>(R.id.widget_overview_uptime).text.toString())
+        assertEquals("INTERNET", overviewViews.findViewById<android.widget.TextView>(R.id.widget_overview_internet_label).text.toString())
+        assertEquals("SENT: 42", overviewViews.findViewById<android.widget.TextView>(R.id.widget_overview_delivered).text.toString())
+        assertEquals("QUEUE: 2", overviewViews.findViewById<android.widget.TextView>(R.id.widget_overview_pending).text.toString())
+        assertTrue(overviewViews.findViewById<android.widget.TextView>(R.id.widget_overview_sim1_detail).text.toString().contains("Sub #7"))
+        assertEquals(android.view.View.VISIBLE, overviewViews.findViewById<android.view.View>(R.id.widget_overview_footer).visibility)
+        assertEquals(android.view.View.VISIBLE, overviewViews.findViewById<android.view.View>(R.id.widget_overview_sim1_detail).visibility)
+
+        // Short & narrow 2x4 resize should gracefully hide footer/details and shorten labels without distortion
+        val shortNarrowOverviewOpts = android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 110)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 170)
+        }
+        val compactOverview = com.example.widget.VantaWidgetUpdater.buildOverviewRemoteViews(context, activeSnapshot, shortNarrowOverviewOpts)
+            .apply(context, android.widget.FrameLayout(context))
+        assertEquals(android.view.View.GONE, compactOverview.findViewById<android.view.View>(R.id.widget_overview_footer).visibility)
+        assertEquals(android.view.View.GONE, compactOverview.findViewById<android.view.View>(R.id.widget_overview_sim1_detail).visibility)
+        assertEquals("NET", compactOverview.findViewById<android.widget.TextView>(R.id.widget_overview_internet_label).text.toString())
+        assertEquals("ON", compactOverview.findViewById<android.widget.TextView>(R.id.widget_overview_internet_value).text.toString())
     }
 
     @Test

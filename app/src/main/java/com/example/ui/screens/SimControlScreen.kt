@@ -181,28 +181,27 @@ fun SimControlScreen(
         )
     }
 
+    val hasPhonePerm = remember(permissionTick) {
+        PermissionHelper.isGranted(context, Manifest.permission.READ_PHONE_STATE)
+    }
     val sim1Info = sims.firstOrNull { it.slotIndex == 0 } ?: SimCardInfo(
         slotIndex = 0,
         subId = -1,
-        carrierName = "Unavailable",
+        carrierName = if (hasPhonePerm) "No SIM inserted" else "Permission required",
         phoneNumber = null,
         isAvailable = false,
         isSelected = prefs.simControl.sim1.masterEnabled,
-        hasPermission = PermissionHelper.isGranted(context, Manifest.permission.READ_PHONE_STATE)
+        hasPermission = hasPhonePerm
     )
     val sim2Info = sims.firstOrNull { it.slotIndex == 1 } ?: SimCardInfo(
         slotIndex = 1,
         subId = -1,
-        carrierName = "Unavailable",
+        carrierName = if (hasPhonePerm) "Single-SIM / Empty" else "Permission required",
         phoneNumber = null,
         isAvailable = false,
         isSelected = prefs.simControl.sim2.masterEnabled,
-        hasPermission = PermissionHelper.isGranted(context, Manifest.permission.READ_PHONE_STATE)
+        hasPermission = hasPhonePerm
     )
-
-    val hasPhonePerm = remember(permissionTick) {
-        PermissionHelper.isGranted(context, Manifest.permission.READ_PHONE_STATE)
-    }
     val hasContactsPerm = remember(permissionTick) {
         PermissionHelper.isGranted(context, Manifest.permission.READ_CONTACTS)
     }

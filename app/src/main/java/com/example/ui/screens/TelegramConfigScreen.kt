@@ -104,6 +104,9 @@ fun TelegramConfigScreen(
     var manualChatIdInput by remember { mutableStateOf("") }
     var showManualPairing by remember { mutableStateOf(false) }
 
+    var forwardDestLabelInput by remember { mutableStateOf("") }
+    var forwardDestChatIdInput by remember { mutableStateOf("") }
+
     EventHorizonBackground {
         Scaffold(
             containerColor = Color.Transparent,
@@ -629,6 +632,152 @@ fun TelegramConfigScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // 3. Forwarding Destinations (for Telegram "Forward" inline button)
+                Text(
+                    text = "3. FORWARDING DESTINATIONS",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = colors.primaryBright
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                GlowCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Save Telegram chats, groups, or channels to appear as quick destination buttons when you tap Forward under an SMS.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = forwardDestLabelInput,
+                                onValueChange = { forwardDestLabelInput = it.take(28) },
+                                label = { Text("Label") },
+                                placeholder = { Text("Work Group") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.White,
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.22f),
+                                    focusedContainerColor = Color(0xCC060608),
+                                    unfocusedContainerColor = Color(0xCC060608),
+                                    focusedTextColor = colors.textPrimary,
+                                    unfocusedTextColor = colors.textPrimary,
+                                    focusedLabelColor = Color.White,
+                                    unfocusedLabelColor = colors.textMuted,
+                                    cursorColor = Color.White
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("forward_dest_label_input")
+                            )
+
+                            OutlinedTextField(
+                                value = forwardDestChatIdInput,
+                                onValueChange = { forwardDestChatIdInput = it.filter { ch -> ch.isDigit() || ch == '-' } },
+                                label = { Text("Chat ID") },
+                                placeholder = { Text("-100...") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color.White,
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.22f),
+                                    focusedContainerColor = Color(0xCC060608),
+                                    unfocusedContainerColor = Color(0xCC060608),
+                                    focusedTextColor = colors.textPrimary,
+                                    unfocusedTextColor = colors.textPrimary,
+                                    focusedLabelColor = Color.White,
+                                    unfocusedLabelColor = colors.textMuted,
+                                    cursorColor = Color.White
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("forward_dest_chat_id_input")
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Button(
+                            onClick = {
+                                val parsedId = forwardDestChatIdInput.toLongOrNull()
+                                if (parsedId == null || parsedId == 0L) {
+                                    Toast.makeText(context, "Enter a valid numeric Chat ID", Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                app.preferencesManager.addForwardDestination(parsedId, forwardDestLabelInput)
+                                forwardDestLabelInput = ""
+                                forwardDestChatIdInput = ""
+                                Toast.makeText(context, "Destination saved", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.White,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("add_forward_dest_btn")
+                        ) {
+                            Text("ADD DESTINATION", fontWeight = FontWeight.Bold)
+                        }
+
+                        if (config.forwardDestinations.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            config.forwardDestinations.forEach { dest ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color.White.copy(alpha = 0.04f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        .testTag("forward_dest_item_${dest.chatId}"),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = dest.label,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            text = "Chat ID: ${dest.chatId}",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                                            color = colors.textMuted
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { app.preferencesManager.removeForwardDestination(dest.chatId) },
+                                        modifier = Modifier.testTag("remove_forward_dest_btn_${dest.chatId}")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Delete,
+                                            contentDescription = "Remove destination",
+                                            tint = colors.textMuted
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Disconnect & Wipe Credentials Button
                 if (config.hasToken) {

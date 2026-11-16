@@ -27,11 +27,25 @@ import java.util.concurrent.ConcurrentHashMap
 
 data class ReplySession(
     val sessionId: String,
+    val contextId: String,
     val chatId: Long,
     val userId: Long,
     val recipientAddress: String,
     val recipientName: String?,
     val selectedSlotIndex: Int,
+    val notificationMessageId: Long? = null,
+    val promptMessageId: Long? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+data class ForwardSession(
+    val sessionId: String,
+    val contextId: String,
+    val chatId: Long,
+    val userId: Long,
+    val awaitingManualChatId: Boolean = false,
+    val selectedDestinationChatId: Long? = null,
+    val selectedDestinationLabel: String? = null,
     val promptMessageId: Long? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -55,10 +69,20 @@ class TelegramBotManager(
 
     var simInfoProvider: (() -> List<SimCardInfo>)? = null
     var isForwardingActiveProvider: (() -> Boolean)? = null
+    var isServiceRunningProvider: (() -> Boolean)? = null
+    var serviceStartedElapsedProvider: (() -> Long?)? = null
+    var isInternetAvailableProvider: (() -> Boolean)? = null
+    var pendingQueueCountProvider: (() -> Int)? = null
+    var onSetForwardingEnabled: ((Boolean) -> Unit)? = null
+    var onToggleSimMaster: ((Int, Boolean) -> Unit)? = null
+    var onToggleOtpProtection: ((Boolean) -> Unit)? = null
     var smsGateway: SmsGateway? = null
 
     private val sessionMutex = Mutex()
     private val activeReplySessions = ConcurrentHashMap<String, ReplySession>()
+    private val activeForwardSessions = ConcurrentHashMap<String, ForwardSession>()
+    private val forwardInFlightKeys = ConcurrentHashMap.newKeySet<String>()
+    private val replyInFlightKeys = ConcurrentHashMap.newKeySet<String>()
 
     // Deduplication guards to avoid duplicate sends from repeated Telegram updates
     private val processedUpdateIds = LinkedHashSet<Long>()
@@ -161,6 +185,9 @@ class TelegramBotManager(
     fun disconnect() {
         stopPolling()
         activeReplySessions.clear()
+        activeForwardSessions.clear()
+        forwardInFlightKeys.clear()
+        replyInFlightKeys.clear()
         preferencesManager.disconnectTelegram()
         _isConnected.value = false
         EventLogger.log(LogCategory.SECURITY, "Telegram bot disconnected and credentials purged", LogLevel.WARNING)
@@ -206,6 +233,10 @@ class TelegramBotManager(
 
     fun getActiveSession(chatId: Long, userId: Long): ReplySession? {
         return activeReplySessions[sessionKey(chatId, userId)]
+    }
+
+    fun getActiveForwardSession(chatId: Long, userId: Long): ForwardSession? {
+        return activeForwardSessions[sessionKey(chatId, userId)]
     }
 
     suspend fun handleUpdate(update: TelegramUpdate) {
@@ -257,11 +288,8 @@ class TelegramBotManager(
                     LogLevel.SUCCESS
                 )
 
-                val confirmation = "Pairing successful! This chat is now authorized with VANTA.\n\n"
-                val sims = simInfoProvider?.invoke() ?: emptyList()
-                val isOnline = isForwardingActiveProvider?.invoke() ?: false
-                val statusMsg = TelegramEntityHelper.formatStatusMessage(isOnline, sims, confirmation)
-                apiClient.sendMessage(token, chatId, statusMsg.text, statusMsg.entities)
+                val confirmation = "Pairing successful! This chat is now authorized with VANTA."
+                sendMenuPanel(token, chatId, BotMenuPanel.OVERVIEW, customNote = confirmation)
                 return
             } else {
                 apiClient.sendMessage(
@@ -288,90 +316,160 @@ class TelegramBotManager(
             return
         }
 
-        // 3. Support /cancel at any point
+        // 3. Support /cancel fallback if triggered during an active session
         if (rawText == "/cancel" || rawText.startsWith("/cancel@")) {
-            val removed = sessionMutex.withLock {
-                activeReplySessions.remove(sessionKey(chatId, userId))
+            val (removedReply, removedForward) = sessionMutex.withLock {
+                val key = sessionKey(chatId, userId)
+                activeReplySessions.remove(key) to activeForwardSessions.remove(key)
             }
-            if (removed != null) {
-                if (removed.promptMessageId != null) {
+            if (removedReply != null) {
+                if (removedReply.promptMessageId != null) {
                     apiClient.editMessageText(
                         token = token,
                         chatId = chatId,
-                        messageId = removed.promptMessageId,
-                        text = "Reply cancelled.",
+                        messageId = removedReply.promptMessageId,
+                        text = "Canceled.",
                         keyboardRows = emptyList()
                     )
+                } else {
+                    apiClient.sendMessage(token, chatId, "Canceled.", includeGithubButton = false)
                 }
+                EventLogger.log(LogCategory.TELEGRAM, "SMS reply session cancelled", LogLevel.INFO)
+            } else if (removedForward != null) {
+                if (removedForward.promptMessageId != null) {
+                    apiClient.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = removedForward.promptMessageId,
+                        text = "Canceled.",
+                        keyboardRows = emptyList()
+                    )
+                } else {
+                    apiClient.sendMessage(token, chatId, "Canceled.", includeGithubButton = false)
+                }
+                EventLogger.log(LogCategory.TELEGRAM, "SMS forward session cancelled", LogLevel.INFO)
+            } else {
+                sendMenuPanel(token, chatId, BotMenuPanel.OVERVIEW)
+            }
+            return
+        }
+
+        // 4. Entry commands open interactive inline-keyboard menu (no slash commands required for normal operation)
+        when {
+            rawText == "/start" || rawText.startsWith("/start@") ||
+                rawText == "/menu" || rawText.startsWith("/menu@") ||
+                rawText == "/status" || rawText.startsWith("/status@") -> {
+                sendMenuPanel(token, chatId, BotMenuPanel.OVERVIEW)
+                EventLogger.log(LogCategory.TELEGRAM, "Sent interactive VANTA Overview panel", LogLevel.INFO)
+                return
+            }
+            rawText == "/help" || rawText.startsWith("/help@") -> {
+                sendMenuPanel(token, chatId, BotMenuPanel.HELP)
+                EventLogger.log(LogCategory.TELEGRAM, "Sent interactive VANTA Help panel", LogLevel.INFO)
+                return
+            }
+        }
+
+        // 5. Active Forward Session awaiting numeric destination Chat ID
+        val activeForward = sessionMutex.withLock {
+            val key = sessionKey(chatId, userId)
+            val existing = activeForwardSessions[key]
+            if (existing != null && existing.awaitingManualChatId) existing else null
+        }
+        if (activeForward != null) {
+            if (rawText.startsWith("/")) {
                 apiClient.sendMessage(
                     token,
                     chatId,
-                    "SMS reply session cancelled.",
+                    "Waiting for a numeric destination Chat ID (or tap Cancel below).",
                     includeGithubButton = false
                 )
-                EventLogger.log(LogCategory.TELEGRAM, "SMS reply session cancelled via /cancel", LogLevel.INFO)
-            } else {
+                return
+            }
+
+            val parsedDestId = rawText.trim().toLongOrNull()
+            if (parsedDestId == null || parsedDestId == 0L) {
                 apiClient.sendMessage(
                     token,
                     chatId,
-                    "No active SMS reply session to cancel.",
+                    "Invalid Chat ID '$rawText'. Enter a valid numeric Chat ID (e.g., 123456789 or -1001234567890) or tap Cancel.",
                     includeGithubButton = false
+                )
+                return
+            }
+
+            val ctx = preferencesManager.getReplyContext(activeForward.contextId)
+            if (ctx == null) {
+                sessionMutex.withLock { activeForwardSessions.remove(sessionKey(chatId, userId)) }
+                apiClient.sendMessage(
+                    token,
+                    chatId,
+                    "Original SMS context expired.",
+                    includeGithubButton = false
+                )
+                return
+            }
+
+            val destLabel = resolveDestinationLabel(parsedDestId)
+            val updated = activeForward.copy(
+                awaitingManualChatId = false,
+                selectedDestinationChatId = parsedDestId,
+                selectedDestinationLabel = destLabel
+            )
+            sessionMutex.withLock {
+                activeForwardSessions[sessionKey(chatId, userId)] = updated
+            }
+
+            val simLabel = ctx.simLabel ?: formatContextSimLabel(ctx)
+            val confirmPrompt = TelegramEntityHelper.formatForwardConfirmPrompt(
+                sender = ctx.senderAddress,
+                contactName = ctx.senderName,
+                simLabel = simLabel,
+                destinationLabel = destLabel,
+                destinationChatId = parsedDestId,
+                alreadyForwarded = ctx.forwardedChatIds.contains(parsedDestId)
+            )
+            val keyboard = buildForwardConfirmKeyboard(updated.sessionId, parsedDestId)
+            if (updated.promptMessageId != null) {
+                apiClient.editMessageText(
+                    token = token,
+                    chatId = chatId,
+                    messageId = updated.promptMessageId,
+                    text = confirmPrompt.text,
+                    entities = confirmPrompt.entities,
+                    keyboardRows = keyboard
+                )
+            } else {
+                apiClient.sendMessageWithKeyboard(
+                    token = token,
+                    chatId = chatId,
+                    text = confirmPrompt.text,
+                    entities = confirmPrompt.entities,
+                    keyboardRows = keyboard
                 )
             }
             return
         }
 
-        // 4. Standard commands (never interpreted as SMS reply text)
-        when {
-            rawText == "/start" || rawText.startsWith("/start@") -> {
-                sendStartStatus(chatId)
-                return
-            }
-            rawText == "/status" || rawText.startsWith("/status@") -> {
-                val isOnline = isForwardingActiveProvider?.invoke() ?: false
-                val sims = simInfoProvider?.invoke() ?: emptyList()
-                val statusMsg = TelegramEntityHelper.formatStatusMessage(isOnline, sims)
-                apiClient.sendMessage(token, chatId, statusMsg.text, statusMsg.entities)
-                EventLogger.log(LogCategory.TELEGRAM, "Responded to /status command", LogLevel.INFO)
-                return
-            }
-            rawText == "/help" || rawText.startsWith("/help@") -> {
-                val helpMsg = TelegramEntityHelper.formatHelpMessage()
-                apiClient.sendMessage(token, chatId, helpMsg.text, helpMsg.entities)
-                EventLogger.log(LogCategory.TELEGRAM, "Responded to /help command", LogLevel.INFO)
-                return
-            }
-        }
-
-        // 5. Active SMS Reply Session for (chatId, userId)
+        // 6. Active SMS Reply Session for (chatId, userId)
         val activeSession = sessionMutex.withLock {
             activeReplySessions.remove(sessionKey(chatId, userId))
         }
         if (activeSession != null) {
-            if (rawText.startsWith("/")) {
-                // Unknown slash command during reply mode: restore session & prompt
-                sessionMutex.withLock {
-                    activeReplySessions[sessionKey(chatId, userId)] = activeSession
-                }
-                apiClient.sendMessage(
-                    token,
-                    chatId,
-                    "Still in SMS reply mode. Send your text message to reply, or send /cancel to abort.",
-                    includeGithubButton = false
-                )
+            val inFlightKey = "${chatId}:${userId}:${activeSession.sessionId}"
+            if (!replyInFlightKeys.add(inFlightKey)) {
                 return
             }
-
-            dispatchSmsReply(token, activeSession, rawText)
+            try {
+                dispatchSmsReply(token, activeSession, rawText)
+            } finally {
+                replyInFlightKeys.remove(inFlightKey)
+            }
             return
         }
 
-        apiClient.sendMessage(
-            token,
-            chatId,
-            "Tap Reply under a forwarded SMS to send a reply, or use /status, /cancel, /help.",
-            includeGithubButton = false
-        )
+        // 7. Default idle text opens the button-driven Overview panel (replaces slash commands)
+        sendMenuPanel(token, chatId, BotMenuPanel.OVERVIEW)
     }
 
     private suspend fun handleCallbackQuery(update: TelegramUpdate) {
@@ -402,6 +500,14 @@ class TelegramBotManager(
         }
 
         when {
+            data.startsWith("menu:") -> {
+                handleMenuCallback(token, chatId, update.callbackMessageId, cbId, data)
+            }
+
+            data.startsWith("act:") -> {
+                handleControlActionCallback(token, chatId, update.callbackMessageId, cbId, data)
+            }
+
             data.startsWith("reply:") -> {
                 val contextId = data.removePrefix("reply:")
                 val ctx = preferencesManager.getReplyContext(contextId)
@@ -421,18 +527,39 @@ class TelegramBotManager(
                     return
                 }
 
-                val defaultSlot = resolveDefaultReplySlot(ctx.simSlot)
+                val key = sessionKey(chatId, userId)
+                var previousPromptToClean: Long? = null
+                val alreadyActive = sessionMutex.withLock {
+                    val existing = activeReplySessions[key]
+                    if (existing != null && existing.contextId == contextId) {
+                        true
+                    } else {
+                        previousPromptToClean = existing?.promptMessageId
+                        false
+                    }
+                }
+                if (alreadyActive) {
+                    apiClient.answerCallbackQuery(token, cbId, "Reply prompt is already active.")
+                    return
+                }
+                if (previousPromptToClean != null) {
+                    apiClient.deleteMessage(token, chatId, previousPromptToClean!!)
+                }
+
+                val sims = simInfoProvider?.invoke().orEmpty()
+                val slotBySub = if (ctx.subId >= 0) {
+                    sims.firstOrNull { it.subId == ctx.subId }?.slotIndex
+                } else {
+                    null
+                }
+                val originalSlot = slotBySub ?: ctx.simSlot
+                val defaultSlot = resolveDefaultReplySlot(originalSlot)
                 val sessionId = UUID.randomUUID().toString().take(8)
-                val simLabel = formatSimLabelForReply(defaultSlot)
 
-                val prompt = TelegramEntityHelper.formatReplyPrompt(
-                    recipientAddress = ctx.senderAddress,
-                    recipientName = ctx.senderName,
-                    selectedSimLabel = simLabel
-                )
-                val keyboard = buildReplyPromptKeyboard(sessionId, defaultSlot)
+                val prompt = TelegramEntityHelper.formatReplyPrompt()
+                val keyboard = buildReplyPromptKeyboard(sessionId)
 
-                apiClient.answerCallbackQuery(token, cbId, "Reply mode ready")
+                apiClient.answerCallbackQuery(token, cbId, "Send your reply")
                 val sent = apiClient.sendMessageWithKeyboard(
                     token = token,
                     chatId = chatId,
@@ -443,71 +570,24 @@ class TelegramBotManager(
                 val promptMsgId = sent.getOrNull()?.messageId
                 val session = ReplySession(
                     sessionId = sessionId,
+                    contextId = contextId,
                     chatId = chatId,
                     userId = userId,
                     recipientAddress = ctx.senderAddress,
                     recipientName = ctx.senderName,
                     selectedSlotIndex = defaultSlot,
+                    notificationMessageId = update.callbackMessageId ?: ctx.notificationMessageId,
                     promptMessageId = promptMsgId
                 )
                 sessionMutex.withLock {
-                    activeReplySessions[sessionKey(chatId, userId)] = session
+                    activeForwardSessions.remove(key)
+                    activeReplySessions[key] = session
                 }
                 EventLogger.log(
                     LogCategory.TELEGRAM,
-                    "Entered SMS reply session for SIM ${defaultSlot + 1}",
+                    "Entered SMS reply session for SIM ${defaultSlot + 1} (subId=${ctx.subId})",
                     LogLevel.INFO
                 )
-            }
-
-            data.startsWith("rsim:") -> {
-                val parts = data.removePrefix("rsim:").split(":")
-                if (parts.size != 2) {
-                    apiClient.answerCallbackQuery(token, cbId, "Invalid SIM selection")
-                    return
-                }
-                val sessionId = parts[0]
-                val targetSlot = parts[1].toIntOrNull() ?: 0
-                if (targetSlot !in 0..1) {
-                    apiClient.answerCallbackQuery(token, cbId, "Invalid SIM slot")
-                    return
-                }
-
-                val key = sessionKey(chatId, userId)
-                val updated = sessionMutex.withLock {
-                    val existing = activeReplySessions[key]
-                    if (existing != null && existing.sessionId == sessionId) {
-                        val next = existing.copy(selectedSlotIndex = targetSlot)
-                        activeReplySessions[key] = next
-                        next
-                    } else {
-                        null
-                    }
-                }
-
-                if (updated == null) {
-                    apiClient.answerCallbackQuery(token, cbId, "Reply session expired.", showAlert = true)
-                    return
-                }
-
-                val simLabel = formatSimLabelForReply(targetSlot)
-                apiClient.answerCallbackQuery(token, cbId, "Selected SIM ${targetSlot + 1}")
-                val prompt = TelegramEntityHelper.formatReplyPrompt(
-                    recipientAddress = updated.recipientAddress,
-                    recipientName = updated.recipientName,
-                    selectedSimLabel = simLabel
-                )
-                val msgIdToEdit = update.callbackMessageId ?: updated.promptMessageId
-                if (msgIdToEdit != null) {
-                    apiClient.editMessageText(
-                        token = token,
-                        chatId = chatId,
-                        messageId = msgIdToEdit,
-                        text = prompt.text,
-                        entities = prompt.entities,
-                        keyboardRows = buildReplyPromptKeyboard(sessionId, targetSlot)
-                    )
-                }
             }
 
             data.startsWith("rcancel:") -> {
@@ -522,24 +602,525 @@ class TelegramBotManager(
                     }
                 }
 
-                apiClient.answerCallbackQuery(token, cbId, "Reply cancelled")
+                if (removed == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Reply session expired.")
+                    val staleMsgId = update.callbackMessageId
+                    if (staleMsgId != null) {
+                        apiClient.editMessageText(
+                            token = token,
+                            chatId = chatId,
+                            messageId = staleMsgId,
+                            text = "Canceled.",
+                            keyboardRows = emptyList()
+                        )
+                    }
+                    return
+                }
+
+                apiClient.answerCallbackQuery(token, cbId, "Canceled.")
+                val msgIdToEdit = update.callbackMessageId ?: removed.promptMessageId
+                if (msgIdToEdit != null) {
+                    apiClient.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = msgIdToEdit,
+                        text = "Canceled.",
+                        keyboardRows = emptyList()
+                    )
+                } else {
+                    apiClient.sendMessage(token, chatId, "Canceled.", includeGithubButton = false)
+                }
+                EventLogger.log(LogCategory.TELEGRAM, "SMS reply session cancelled via button", LogLevel.INFO)
+            }
+
+            data.startsWith("fwd:") -> {
+                val contextId = data.removePrefix("fwd:")
+                val ctx = preferencesManager.getReplyContext(contextId)
+                if (ctx == null || ctx.messageBody.isBlank()) {
+                    apiClient.answerCallbackQuery(token, cbId, "Original SMS content expired or unavailable.", showAlert = true)
+                    return
+                }
+
+                val sessionId = UUID.randomUUID().toString().take(8)
+                val destinations = preferencesManager.telegramConfig.value.forwardDestinations
+                val prompt = TelegramEntityHelper.formatForwardPrompt(
+                    sender = ctx.senderAddress,
+                    contactName = ctx.senderName,
+                    simLabel = formatContextSimLabel(ctx),
+                    hasSavedDestinations = destinations.isNotEmpty()
+                )
+                val keyboard = buildForwardDestinationsKeyboard(sessionId, destinations)
+
+                apiClient.answerCallbackQuery(token, cbId, "Select destination")
+                val sent = apiClient.sendMessageWithKeyboard(
+                    token = token,
+                    chatId = chatId,
+                    text = prompt.text,
+                    entities = prompt.entities,
+                    keyboardRows = keyboard
+                )
+                val promptMsgId = sent.getOrNull()?.messageId
+                val session = ForwardSession(
+                    sessionId = sessionId,
+                    contextId = contextId,
+                    chatId = chatId,
+                    userId = userId,
+                    promptMessageId = promptMsgId
+                )
+                sessionMutex.withLock {
+                    val key = sessionKey(chatId, userId)
+                    activeReplySessions.remove(key)
+                    activeForwardSessions[key] = session
+                }
+                EventLogger.log(LogCategory.TELEGRAM, "Started SMS forward selection flow", LogLevel.INFO)
+            }
+
+            data.startsWith("fwdmanual:") -> {
+                val sessionId = data.removePrefix("fwdmanual:")
+                val key = sessionKey(chatId, userId)
+                val updated = sessionMutex.withLock {
+                    val existing = activeForwardSessions[key]
+                    if (existing != null && existing.sessionId == sessionId) {
+                        val next = existing.copy(awaitingManualChatId = true, selectedDestinationChatId = null)
+                        activeForwardSessions[key] = next
+                        next
+                    } else null
+                }
+                if (updated == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Forward session expired.", showAlert = true)
+                    return
+                }
+                val ctx = preferencesManager.getReplyContext(updated.contextId)
+                if (ctx == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Original SMS context expired.", showAlert = true)
+                    return
+                }
+                apiClient.answerCallbackQuery(token, cbId, "Send destination Chat ID")
+                val prompt = TelegramEntityHelper.formatForwardManualChatIdPrompt(
+                    sender = ctx.senderAddress,
+                    contactName = ctx.senderName,
+                    simLabel = formatContextSimLabel(ctx)
+                )
+                val msgIdToEdit = update.callbackMessageId ?: updated.promptMessageId
+                if (msgIdToEdit != null) {
+                    apiClient.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = msgIdToEdit,
+                        text = prompt.text,
+                        entities = prompt.entities,
+                        keyboardRows = listOf(
+                            listOf(
+                                InlineButton(text = "Back", callbackData = "fwdback:$sessionId"),
+                                InlineButton(text = "Cancel", callbackData = "fwdcancel:$sessionId")
+                            )
+                        )
+                    )
+                }
+            }
+
+            data.startsWith("fwdsel:") -> {
+                val parts = data.removePrefix("fwdsel:").split(":")
+                if (parts.size != 2) {
+                    apiClient.answerCallbackQuery(token, cbId, "Invalid destination selection")
+                    return
+                }
+                val sessionId = parts[0]
+                val destChatId = parts[1].toLongOrNull()
+                if (destChatId == null || destChatId == 0L) {
+                    apiClient.answerCallbackQuery(token, cbId, "Invalid destination Chat ID")
+                    return
+                }
+
+                val key = sessionKey(chatId, userId)
+                val updated = sessionMutex.withLock {
+                    val existing = activeForwardSessions[key]
+                    if (existing != null && existing.sessionId == sessionId) {
+                        val label = resolveDestinationLabel(destChatId)
+                        val next = existing.copy(
+                            awaitingManualChatId = false,
+                            selectedDestinationChatId = destChatId,
+                            selectedDestinationLabel = label
+                        )
+                        activeForwardSessions[key] = next
+                        next
+                    } else null
+                }
+                if (updated == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Forward session expired.", showAlert = true)
+                    return
+                }
+
+                val ctx = preferencesManager.getReplyContext(updated.contextId)
+                if (ctx == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Original SMS context expired.", showAlert = true)
+                    return
+                }
+
+                apiClient.answerCallbackQuery(token, cbId, "Confirm forward")
+                val prompt = TelegramEntityHelper.formatForwardConfirmPrompt(
+                    sender = ctx.senderAddress,
+                    contactName = ctx.senderName,
+                    simLabel = formatContextSimLabel(ctx),
+                    destinationLabel = updated.selectedDestinationLabel ?: destChatId.toString(),
+                    destinationChatId = destChatId,
+                    alreadyForwarded = ctx.forwardedChatIds.contains(destChatId)
+                )
+                val msgIdToEdit = update.callbackMessageId ?: updated.promptMessageId
+                if (msgIdToEdit != null) {
+                    apiClient.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = msgIdToEdit,
+                        text = prompt.text,
+                        entities = prompt.entities,
+                        keyboardRows = buildForwardConfirmKeyboard(sessionId, destChatId)
+                    )
+                }
+            }
+
+            data.startsWith("fwdback:") -> {
+                val sessionId = data.removePrefix("fwdback:")
+                val key = sessionKey(chatId, userId)
+                val updated = sessionMutex.withLock {
+                    val existing = activeForwardSessions[key]
+                    if (existing != null && existing.sessionId == sessionId) {
+                        val next = existing.copy(
+                            awaitingManualChatId = false,
+                            selectedDestinationChatId = null,
+                            selectedDestinationLabel = null
+                        )
+                        activeForwardSessions[key] = next
+                        next
+                    } else null
+                }
+                if (updated == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Forward session expired.", showAlert = true)
+                    return
+                }
+                val ctx = preferencesManager.getReplyContext(updated.contextId)
+                if (ctx == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Original SMS context expired.", showAlert = true)
+                    return
+                }
+                val destinations = preferencesManager.telegramConfig.value.forwardDestinations
+                val prompt = TelegramEntityHelper.formatForwardPrompt(
+                    sender = ctx.senderAddress,
+                    contactName = ctx.senderName,
+                    simLabel = formatContextSimLabel(ctx),
+                    hasSavedDestinations = destinations.isNotEmpty()
+                )
+                apiClient.answerCallbackQuery(token, cbId)
+                val msgIdToEdit = update.callbackMessageId ?: updated.promptMessageId
+                if (msgIdToEdit != null) {
+                    apiClient.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = msgIdToEdit,
+                        text = prompt.text,
+                        entities = prompt.entities,
+                        keyboardRows = buildForwardDestinationsKeyboard(sessionId, destinations)
+                    )
+                }
+            }
+
+            data.startsWith("fwdgo:") -> {
+                val parts = data.removePrefix("fwdgo:").split(":")
+                if (parts.size != 2) {
+                    apiClient.answerCallbackQuery(token, cbId, "Invalid forward request")
+                    return
+                }
+                val sessionId = parts[0]
+                val destChatId = parts[1].toLongOrNull()
+                if (destChatId == null || destChatId == 0L) {
+                    apiClient.answerCallbackQuery(token, cbId, "Invalid destination Chat ID")
+                    return
+                }
+
+                val key = sessionKey(chatId, userId)
+                val session = sessionMutex.withLock {
+                    val existing = activeForwardSessions[key]
+                    if (existing != null && existing.sessionId == sessionId) existing else null
+                }
+                if (session == null) {
+                    apiClient.answerCallbackQuery(token, cbId, "Forward session expired.", showAlert = true)
+                    return
+                }
+
+                val ctx = preferencesManager.getReplyContext(session.contextId)
+                if (ctx == null || ctx.messageBody.isBlank()) {
+                    sessionMutex.withLock { activeForwardSessions.remove(key) }
+                    apiClient.answerCallbackQuery(token, cbId, "Original SMS context expired.", showAlert = true)
+                    return
+                }
+
+                val inFlightKey = "${session.contextId}:$destChatId"
+                if (ctx.forwardedChatIds.contains(destChatId) || !forwardInFlightKeys.add(inFlightKey)) {
+                    sessionMutex.withLock { activeForwardSessions.remove(key) }
+                    apiClient.answerCallbackQuery(token, cbId, "Already forwarded to this chat.", showAlert = true)
+                    val msgIdToEdit = update.callbackMessageId ?: session.promptMessageId
+                    if (msgIdToEdit != null) {
+                        apiClient.editMessageText(
+                            token = token,
+                            chatId = chatId,
+                            messageId = msgIdToEdit,
+                            text = "Already forwarded to destination ($destChatId). Duplicate send prevented.",
+                            keyboardRows = emptyList()
+                        )
+                    }
+                    return
+                }
+
+                val destLabel = session.selectedDestinationLabel ?: resolveDestinationLabel(destChatId)
+                val destDisplay = if (destLabel != destChatId.toString()) "$destLabel ($destChatId)" else destChatId.toString()
+
+                try {
+                    apiClient.answerCallbackQuery(token, cbId, "Forwarding SMS...")
+                    val forwardedMsg = TelegramEntityHelper.formatForwardedSmsToChat(
+                        sender = ctx.senderAddress,
+                        contactName = ctx.senderName,
+                        body = ctx.messageBody,
+                        simLabel = formatContextSimLabel(ctx),
+                        receivedTimestamp = ctx.receivedTimestamp,
+                        isOtp = ctx.isOtp
+                    )
+
+                    val sendResult = apiClient.sendMessage(
+                        token = token,
+                        chatId = destChatId,
+                        text = forwardedMsg.text,
+                        entities = forwardedMsg.entities,
+                        includeGithubButton = false
+                    )
+
+                    val msgIdToEdit = update.callbackMessageId ?: session.promptMessageId
+                    sendResult.onSuccess {
+                        preferencesManager.markReplyContextForwarded(session.contextId, destChatId)
+                        sessionMutex.withLock { activeForwardSessions.remove(key) }
+                        if (msgIdToEdit != null) {
+                            apiClient.editMessageText(
+                                token = token,
+                                chatId = chatId,
+                                messageId = msgIdToEdit,
+                                text = "✓ Forwarded SMS via VANTA to $destDisplay",
+                                keyboardRows = emptyList()
+                            )
+                        }
+                        EventLogger.log(
+                            LogCategory.TELEGRAM,
+                            "Forwarded SMS from '${ctx.senderAddress}' to Telegram destination $destChatId",
+                            LogLevel.SUCCESS
+                        )
+                    }.onFailure { err ->
+                        val reason = err.message ?: "Telegram API rejected destination"
+                        if (msgIdToEdit != null) {
+                            apiClient.editMessageText(
+                                token = token,
+                                chatId = chatId,
+                                messageId = msgIdToEdit,
+                                text = "✕ Failed to forward SMS\nDestination: $destDisplay\nReason: $reason",
+                                keyboardRows = listOf(
+                                    listOf(
+                                        InlineButton(text = "Back", callbackData = "fwdback:$sessionId"),
+                                        InlineButton(text = "Cancel", callbackData = "fwdcancel:$sessionId")
+                                    )
+                                )
+                            )
+                        }
+                        EventLogger.log(
+                            LogCategory.ERROR,
+                            "SMS forward to destination $destChatId failed: $reason",
+                            LogLevel.ERROR
+                        )
+                    }
+                } finally {
+                    forwardInFlightKeys.remove(inFlightKey)
+                }
+            }
+
+            data.startsWith("fwdcancel:") -> {
+                val sessionId = data.removePrefix("fwdcancel:")
+                val key = sessionKey(chatId, userId)
+                val removed = sessionMutex.withLock {
+                    val existing = activeForwardSessions[key]
+                    if (existing != null && existing.sessionId == sessionId) {
+                        activeForwardSessions.remove(key)
+                    } else null
+                }
+
+                apiClient.answerCallbackQuery(token, cbId, "Forward cancelled")
                 val msgIdToEdit = update.callbackMessageId ?: removed?.promptMessageId
                 if (msgIdToEdit != null) {
                     apiClient.editMessageText(
                         token = token,
                         chatId = chatId,
                         messageId = msgIdToEdit,
-                        text = "SMS reply cancelled.",
+                        text = "SMS forward cancelled.",
                         keyboardRows = emptyList()
                     )
                 }
-                EventLogger.log(LogCategory.TELEGRAM, "SMS reply session cancelled via button", LogLevel.INFO)
+                EventLogger.log(LogCategory.TELEGRAM, "SMS forward session cancelled via button", LogLevel.INFO)
             }
 
             else -> {
-                apiClient.answerCallbackQuery(token, cbId)
+                apiClient.answerCallbackQuery(token, cbId, "Action expired or unavailable.")
             }
         }
+    }
+
+    private suspend fun handleMenuCallback(
+        token: String,
+        chatId: Long,
+        messageId: Long?,
+        cbId: String,
+        data: String
+    ) {
+        val rawTarget = data.removePrefix("menu:")
+        val isRefresh = rawTarget.startsWith("refresh:")
+        val panel = BotMenuPanel.fromId(rawTarget.removePrefix("refresh:"))
+
+        val feedback = if (isRefresh) "Updated" else null
+        apiClient.answerCallbackQuery(token, cbId, feedback)
+
+        if (messageId != null) {
+            editMenuPanel(token, chatId, messageId, panel)
+        } else {
+            sendMenuPanel(token, chatId, panel)
+        }
+    }
+
+    private suspend fun handleControlActionCallback(
+        token: String,
+        chatId: Long,
+        messageId: Long?,
+        cbId: String,
+        data: String
+    ) {
+        val parts = data.removePrefix("act:").split(":")
+        val action = parts.getOrNull(0) ?: ""
+
+        when (action) {
+            "fwd_toggle", "svc_toggle" -> {
+                val origin = BotMenuPanel.fromId(parts.getOrNull(1))
+                val target = !preferencesManager.preferences.value.isForwardingEnabled
+                onSetForwardingEnabled?.invoke(target) ?: preferencesManager.setForwardingEnabled(target)
+                val toast = if (target) "Forwarding enabled" else "Forwarding stopped"
+                apiClient.answerCallbackQuery(token, cbId, toast)
+                if (messageId != null) {
+                    editMenuPanel(token, chatId, messageId, origin)
+                }
+            }
+
+            "sim_toggle" -> {
+                val slot = parts.getOrNull(1)?.toIntOrNull()
+                val origin = BotMenuPanel.fromId(parts.getOrNull(2))
+                if (slot == null || slot !in 0..1) {
+                    apiClient.answerCallbackQuery(token, cbId, "Invalid SIM slot")
+                    return
+                }
+                val sim = simInfoProvider?.invoke()?.firstOrNull { it.slotIndex == slot }
+                if (sim == null || !sim.isAvailable || !sim.hasPermission) {
+                    apiClient.answerCallbackQuery(token, cbId, "SIM ${slot + 1} is unavailable.", showAlert = true)
+                    if (messageId != null) editMenuPanel(token, chatId, messageId, origin)
+                    return
+                }
+                val currentMaster = preferencesManager.preferences.value.simControl.forSlot(slot).masterEnabled
+                val target = !currentMaster
+                onToggleSimMaster?.invoke(slot, target) ?: preferencesManager.setSimMasterEnabled(slot, target)
+                apiClient.answerCallbackQuery(
+                    token,
+                    cbId,
+                    "SIM ${slot + 1} ${if (target) "enabled" else "disabled"}"
+                )
+                if (messageId != null) {
+                    editMenuPanel(token, chatId, messageId, origin)
+                }
+            }
+
+            "otp_toggle" -> {
+                val origin = BotMenuPanel.fromId(parts.getOrNull(1))
+                val prefs = preferencesManager.preferences.value
+                val target = !prefs.isOtpProtectionEnabled
+                if (target && !prefs.simControl.isAnyOtpForwardingEnabled()) {
+                    apiClient.answerCallbackQuery(
+                        token,
+                        cbId,
+                        "Enable OTP forwarding on at least one SIM first.",
+                        showAlert = true
+                    )
+                    return
+                }
+                onToggleOtpProtection?.invoke(target) ?: preferencesManager.setOtpProtectionEnabled(target)
+                apiClient.answerCallbackQuery(
+                    token,
+                    cbId,
+                    "OTP Protection ${if (target) "enabled" else "disabled"}"
+                )
+                if (messageId != null) {
+                    editMenuPanel(token, chatId, messageId, origin)
+                }
+            }
+
+            else -> {
+                apiClient.answerCallbackQuery(token, cbId, "Action expired or unavailable.")
+            }
+        }
+    }
+
+    private suspend fun sendMenuPanel(
+        token: String,
+        chatId: Long,
+        panel: BotMenuPanel,
+        customNote: String? = null
+    ): Result<TelegramMessage> {
+        val (formatted, keyboard) = buildMenuPayload(panel, customNote)
+        return apiClient.sendMessageWithKeyboard(
+            token = token,
+            chatId = chatId,
+            text = formatted.text,
+            entities = formatted.entities,
+            keyboardRows = keyboard
+        )
+    }
+
+    private suspend fun editMenuPanel(
+        token: String,
+        chatId: Long,
+        messageId: Long,
+        panel: BotMenuPanel
+    ): Result<Unit> {
+        val (formatted, keyboard) = buildMenuPayload(panel, customNote = null)
+        return apiClient.editMessageText(
+            token = token,
+            chatId = chatId,
+            messageId = messageId,
+            text = formatted.text,
+            entities = formatted.entities,
+            keyboardRows = keyboard
+        )
+    }
+
+    private fun buildMenuPayload(
+        panel: BotMenuPanel,
+        customNote: String?
+    ): Pair<FormattedMessage, List<List<InlineButton>>> {
+        val sims = simInfoProvider?.invoke() ?: emptyList()
+        val isServiceRunning = isServiceRunningProvider?.invoke()
+            ?: (isForwardingActiveProvider?.invoke() == true)
+        val isInternet = isInternetAvailableProvider?.invoke() ?: _isConnected.value
+        val pendingCount = pendingQueueCountProvider?.invoke() ?: 0
+        return TelegramMenuHelper.buildPanelContent(
+            panel = panel,
+            preferencesManager = preferencesManager,
+            sims = sims,
+            isServiceRunning = isServiceRunning,
+            serviceStartedElapsedMs = serviceStartedElapsedProvider?.invoke(),
+            isInternetOnline = isInternet,
+            isBotConnected = _isConnected.value,
+            isPollingActive = _isPollingActive.value,
+            pendingQueueCount = pendingCount,
+            customNote = customNote
+        )
     }
 
     private suspend fun dispatchSmsReply(
@@ -549,12 +1130,22 @@ class TelegramBotManager(
     ) {
         val gateway = smsGateway
         if (gateway == null) {
-            apiClient.sendMessage(
-                token,
-                session.chatId,
-                "SMS sending service is unavailable right now.",
-                includeGithubButton = false
-            )
+            if (session.promptMessageId != null) {
+                apiClient.editMessageText(
+                    token = token,
+                    chatId = session.chatId,
+                    messageId = session.promptMessageId,
+                    text = "SMS sending service is unavailable right now.",
+                    keyboardRows = emptyList()
+                )
+            } else {
+                apiClient.sendMessage(
+                    token,
+                    session.chatId,
+                    "SMS sending service is unavailable right now.",
+                    includeGithubButton = false
+                )
+            }
             return
         }
 
@@ -575,23 +1166,48 @@ class TelegramBotManager(
         )
 
         val target = TelegramEntityHelper.formatSenderDisplay(session.recipientAddress, session.recipientName)
-        sendResult.onSuccess { info ->
-            val partNote = if (info.partCount > 1) " (${info.partCount} parts)" else ""
-            val report = "✓ SMS delivered to carrier\nTo: $target\nVia: SIM ${info.slotIndex + 1} (${info.carrierName})$partNote"
-            if (session.promptMessageId != null) {
+        sendResult.onSuccess {
+            val updatedCtx = preferencesManager.appendReplyToContext(session.contextId, replyText)
+            val notifMsgId = session.notificationMessageId ?: updatedCtx?.notificationMessageId
+            if (notifMsgId != null && updatedCtx != null) {
+                val simLabel = updatedCtx.simLabel ?: formatContextSimLabel(updatedCtx)
+                val updatedNotification = TelegramEntityHelper.formatIncomingSms(
+                    sender = updatedCtx.senderAddress,
+                    body = updatedCtx.messageBody,
+                    simLabel = simLabel,
+                    contactName = updatedCtx.senderName,
+                    receivedTimestamp = updatedCtx.receivedTimestamp,
+                    isOtp = updatedCtx.isOtp,
+                    sentReplies = updatedCtx.sentReplies
+                )
                 apiClient.editMessageText(
                     token = token,
                     chatId = session.chatId,
-                    messageId = session.promptMessageId,
-                    text = report,
-                    keyboardRows = emptyList()
+                    messageId = notifMsgId,
+                    text = updatedNotification.text,
+                    entities = updatedNotification.entities,
+                    keyboardRows = buildSmsNotificationKeyboard(updatedCtx.contextId)
                 )
+                if (session.promptMessageId != null) {
+                    apiClient.deleteMessage(token, session.chatId, session.promptMessageId)
+                }
             } else {
-                apiClient.sendMessage(token, session.chatId, report, includeGithubButton = false)
+                val fallbackText = "You replied:\n$replyText"
+                if (session.promptMessageId != null) {
+                    apiClient.editMessageText(
+                        token = token,
+                        chatId = session.chatId,
+                        messageId = session.promptMessageId,
+                        text = fallbackText,
+                        keyboardRows = emptyList()
+                    )
+                } else {
+                    apiClient.sendMessage(token, session.chatId, fallbackText, includeGithubButton = false)
+                }
             }
         }.onFailure { err ->
             val reason = err.message ?: "Unknown sending failure"
-            val report = "✕ SMS failed to send\nTo: $target\nVia: SIM ${session.selectedSlotIndex + 1}\nReason: $reason"
+            val report = "✕ Failed to send SMS reply\nTo: $target\nVia: SIM ${session.selectedSlotIndex + 1}\nReason: $reason"
             if (session.promptMessageId != null) {
                 apiClient.editMessageText(
                     token = token,
@@ -634,46 +1250,85 @@ class TelegramBotManager(
         }
     }
 
-    private fun buildReplyPromptKeyboard(sessionId: String, selectedSlot: Int): List<List<InlineButton>> {
-        val sims = simInfoProvider?.invoke().orEmpty()
-        val hasDualSlots = sims.size >= 2 || sims.any { it.slotIndex == 1 }
-        val rows = mutableListOf<List<InlineButton>>()
+    private fun buildReplyPromptKeyboard(sessionId: String): List<List<InlineButton>> {
+        return listOf(listOf(InlineButton(text = "Cancel", callbackData = "rcancel:$sessionId")))
+    }
 
-        if (hasDualSlots) {
-            val s1 = sims.firstOrNull { it.slotIndex == 0 }
-            val s2 = sims.firstOrNull { it.slotIndex == 1 }
-            val s1Label = buildString {
-                if (selectedSlot == 0) append("✓ ")
-                append("SIM 1")
-                if (s1?.isAvailable == true && s1.carrierName.isNotBlank()) append(" (${s1.carrierName})")
-            }
-            val s2Label = buildString {
-                if (selectedSlot == 1) append("✓ ")
-                append("SIM 2")
-                if (s2?.isAvailable == true && s2.carrierName.isNotBlank()) append(" (${s2.carrierName})")
-            }
+    private fun buildSmsNotificationKeyboard(contextId: String): List<List<InlineButton>> {
+        return listOf(
+            listOf(
+                InlineButton(text = "Reply", callbackData = "reply:$contextId"),
+                InlineButton(text = "Forward", callbackData = "fwd:$contextId")
+            )
+        )
+    }
+
+    private fun buildForwardDestinationsKeyboard(
+        sessionId: String,
+        destinations: List<com.example.data.model.ForwardDestination>
+    ): List<List<InlineButton>> {
+        val rows = mutableListOf<List<InlineButton>>()
+        destinations.chunked(2).forEach { pair ->
             rows.add(
-                listOf(
-                    InlineButton(text = s1Label, callbackData = "rsim:$sessionId:0"),
-                    InlineButton(text = s2Label, callbackData = "rsim:$sessionId:1")
-                )
+                pair.map { dest ->
+                    InlineButton(
+                        text = dest.label,
+                        callbackData = "fwdsel:$sessionId:${dest.chatId}"
+                    )
+                }
             )
         }
-
-        rows.add(listOf(InlineButton(text = "Cancel", callbackData = "rcancel:$sessionId")))
+        rows.add(
+            listOf(
+                InlineButton(text = "Enter Chat ID", callbackData = "fwdmanual:$sessionId"),
+                InlineButton(text = "Cancel", callbackData = "fwdcancel:$sessionId")
+            )
+        )
         return rows
+    }
+
+    private fun buildForwardConfirmKeyboard(sessionId: String, destChatId: Long): List<List<InlineButton>> {
+        return listOf(
+            listOf(InlineButton(text = "✓ Confirm Forward", callbackData = "fwdgo:$sessionId:$destChatId")),
+            listOf(
+                InlineButton(text = "Back", callbackData = "fwdback:$sessionId"),
+                InlineButton(text = "Cancel", callbackData = "fwdcancel:$sessionId")
+            )
+        )
+    }
+
+    private fun resolveDestinationLabel(destChatId: Long): String {
+        val saved = preferencesManager.telegramConfig.value.forwardDestinations
+            .firstOrNull { it.chatId == destChatId }
+        return saved?.label ?: destChatId.toString()
+    }
+
+    private fun formatContextSimLabel(ctx: SmsReplyContext): String? {
+        if (ctx.simSlot !in 0..1 && ctx.subId < 0) return null
+        val sims = simInfoProvider?.invoke().orEmpty()
+        val sim = sims.firstOrNull { it.subId >= 0 && it.subId == ctx.subId }
+            ?: sims.firstOrNull { it.slotIndex == ctx.simSlot }
+        val slotNum = when {
+            sim != null -> sim.slotIndex + 1
+            ctx.simSlot in 0..1 -> ctx.simSlot + 1
+            else -> return null
+        }
+        val validCarrier = sim?.carrierName?.takeIf {
+            sim.isAvailable &&
+                it.isNotBlank() &&
+                it != "Carrier unavailable" &&
+                it != "Permission required" &&
+                it != "No SIM inserted"
+        }
+        return if (validCarrier != null) "SIM $slotNum · $validCarrier" else "SIM $slotNum"
     }
 
     suspend fun sendStartStatus(chatId: Long): Result<TelegramMessage> {
         val token = preferencesManager.getDecryptedBotToken()
         if (token.isEmpty()) return Result.failure(Exception("No token"))
 
-        val isOnline = isForwardingActiveProvider?.invoke() ?: false
-        val sims = simInfoProvider?.invoke() ?: emptyList()
-        val formatted = TelegramEntityHelper.formatStatusMessage(isOnline, sims)
-
-        EventLogger.log(LogCategory.TELEGRAM, "Sending /start status message to chat $chatId", LogLevel.INFO)
-        return apiClient.sendMessage(token, chatId, formatted.text, formatted.entities)
+        EventLogger.log(LogCategory.TELEGRAM, "Sending interactive VANTA Overview panel to chat $chatId", LogLevel.INFO)
+        return sendMenuPanel(token, chatId, BotMenuPanel.OVERVIEW)
     }
 
     suspend fun forwardSms(
@@ -700,7 +1355,10 @@ class TelegramBotManager(
                 senderName = contactName,
                 simSlot = simSlot,
                 subId = subId,
-                receivedTimestamp = receivedTimestamp
+                receivedTimestamp = receivedTimestamp,
+                messageBody = body,
+                isOtp = isOtp,
+                simLabel = simLabel
             )
         )
 
@@ -712,20 +1370,19 @@ class TelegramBotManager(
             receivedTimestamp = receivedTimestamp,
             isOtp = isOtp
         )
-        val replyKeyboard = listOf(
-            listOf(InlineButton(text = "Reply", callbackData = "reply:$contextId"))
-        )
+        val actionKeyboard = buildSmsNotificationKeyboard(contextId)
 
         val result = apiClient.sendMessageWithKeyboard(
             token = token,
             chatId = chatId,
             text = formatted.text,
             entities = formatted.entities,
-            keyboardRows = replyKeyboard
+            keyboardRows = actionKeyboard
         )
 
-        result.onSuccess {
+        result.onSuccess { sentMsg ->
             _isConnected.value = true
+            preferencesManager.updateReplyContextNotificationId(contextId, sentMsg.messageId)
             preferencesManager.recordDeliverySuccess()
             EventLogger.log(
                 LogCategory.SMS_DELIVERY,

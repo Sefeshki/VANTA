@@ -547,9 +547,11 @@ fun StatusPanel(
             HorizontalDivider(color = Color.White.copy(alpha = 0.10f), thickness = 1.dp)
             Spacer(modifier = Modifier.height(10.dp))
 
+            val anySimHasPermission = sims.any { it.hasPermission }
             SimLiveStatusRow(
                 slotIndex = 0,
                 simInfo = sim1Info,
+                anySimHasPermission = anySimHasPermission,
                 settings = simControl.sim1,
                 isBridgeForwardingOn = isForwardingActive && isServiceRunning,
                 isGlobalOtpProtectionOn = isOtpProtectionEnabled,
@@ -561,6 +563,7 @@ fun StatusPanel(
             SimLiveStatusRow(
                 slotIndex = 1,
                 simInfo = sim2Info,
+                anySimHasPermission = anySimHasPermission,
                 settings = simControl.sim2,
                 isBridgeForwardingOn = isForwardingActive && isServiceRunning,
                 isGlobalOtpProtectionOn = isOtpProtectionEnabled,
@@ -694,13 +697,15 @@ fun StatusPanel(
 private fun SimLiveStatusRow(
     slotIndex: Int,
     simInfo: SimCardInfo?,
+    anySimHasPermission: Boolean,
     settings: SimFeatureSettings,
     isBridgeForwardingOn: Boolean,
     isGlobalOtpProtectionOn: Boolean,
     onToggleMaster: (Boolean) -> Unit
 ) {
     val colors = LocalVantaColors.current
-    val hasPerm = simInfo?.hasPermission ?: false
+    val isSingleSimHardwareAbsent = simInfo == null && anySimHasPermission
+    val hasPerm = (simInfo?.hasPermission ?: false) || anySimHasPermission
     val isAvailable = simInfo?.isAvailable ?: false
     val isAbsent = hasPerm && !isAvailable
 
@@ -716,7 +721,7 @@ private fun SimLiveStatusRow(
     val titleText = when {
         !hasPerm -> "SIM ${slotIndex + 1} · Permission needed"
         isAbsent -> "SIM ${slotIndex + 1} · Unavailable"
-        else -> "SIM ${slotIndex + 1} · ${simInfo?.carrierName ?: "Unknown"}"
+        else -> "SIM ${slotIndex + 1} · ${simInfo?.carrierName ?: "Carrier unavailable"}"
     }
 
     val featureSummary = buildString {
@@ -737,6 +742,7 @@ private fun SimLiveStatusRow(
 
     val statusText = when {
         !hasPerm -> if (settings.masterEnabled) "Master ON · Grant Phone access" else "Disabled"
+        isSingleSimHardwareAbsent -> "Single-SIM device"
         isAbsent -> "No SIM inserted"
         !settings.masterEnabled -> "Disabled"
         isBridgeForwardingOn -> "Active · $featureSummary"

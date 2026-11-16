@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +16,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -32,8 +36,12 @@ import com.example.ui.screens.SplashScreen
 import com.example.ui.screens.SystemHealthScreen
 import com.example.ui.screens.TelegramConfigScreen
 import com.example.ui.theme.VantaTheme
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
+
+    private val pendingNavDestination = MutableStateFlow<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
@@ -42,11 +50,15 @@ class MainActivity : ComponentActivity() {
         )
         applyImmersiveFullscreen()
         val app = applicationContext as VantaApplication
+        extractDestination(intent)?.let { pendingNavDestination.value = it }
 
         setContent {
+            val targetDest by pendingNavDestination.collectAsState()
             VantaTheme {
                 VantaAppNavHost(
                     app = app,
+                    pendingDestination = targetDest,
+                    onConsumePendingDestination = { pendingNavDestination.value = null },
                     onReapplyFullscreen = ::applyImmersiveFullscreen
                 )
             }
@@ -54,9 +66,29 @@ class MainActivity : ComponentActivity() {
         window.decorView.post { applyImmersiveFullscreen() }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        extractDestination(intent)?.let { pendingNavDestination.value = it }
+    }
+
+    private fun extractDestination(intent: Intent?): String? {
+        val raw = intent?.getStringExtra(EXTRA_NAV_DESTINATION) ?: return null
+        return when (raw) {
+            DEST_DASHBOARD,
+            DEST_SIM_CONTROL,
+            DEST_TELEGRAM_CONFIG,
+            DEST_PERMISSION_CENTER,
+            DEST_SYSTEM_HEALTH,
+            DEST_PRIVACY_PROTECTION -> raw
+            else -> null
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         applyImmersiveFullscreen()
+        (applicationContext as? VantaApplication)?.serviceAlertManager?.evaluatePermissions()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -81,12 +113,24 @@ class MainActivity : ComponentActivity() {
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         insetsController.hide(WindowInsetsCompat.Type.statusBars())
     }
+
+    companion object {
+        const val EXTRA_NAV_DESTINATION = "vanta_nav_destination"
+        const val DEST_DASHBOARD = "dashboard"
+        const val DEST_SIM_CONTROL = "sim_control"
+        const val DEST_TELEGRAM_CONFIG = "telegram_config"
+        const val DEST_PERMISSION_CENTER = "permission_center"
+        const val DEST_SYSTEM_HEALTH = "system_health"
+        const val DEST_PRIVACY_PROTECTION = "privacy_protection"
+    }
 }
 
 @Composable
 fun VantaAppNavHost(
     app: VantaApplication,
     modifier: Modifier = Modifier,
+    pendingDestination: String? = null,
+    onConsumePendingDestination: () -> Unit = {},
     onReapplyFullscreen: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -99,6 +143,21 @@ fun VantaAppNavHost(
         onDispose { navController.removeOnDestinationChangedListener(listener) }
     }
 
+    LaunchedEffect(pendingDestination) {
+        val target = pendingDestination ?: return@LaunchedEffect
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        if (currentRoute != "splash") {
+            if (target == MainActivity.DEST_DASHBOARD) {
+                navController.navigate(MainActivity.DEST_DASHBOARD) {
+                    popUpTo(MainActivity.DEST_DASHBOARD) { inclusive = true }
+                }
+            } else if (currentRoute != target) {
+                navController.navigate(target)
+            }
+            onConsumePendingDestination()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = "splash",
@@ -109,8 +168,15 @@ fun VantaAppNavHost(
         composable("splash") {
             SplashScreen(
                 onSplashFinished = {
+                    val deepLink = pendingDestination
                     navController.navigate("dashboard") {
                         popUpTo("splash") { inclusive = true }
+                    }
+                    if (deepLink != null && deepLink != MainActivity.DEST_DASHBOARD) {
+                        navController.navigate(deepLink)
+                        onConsumePendingDestination()
+                    } else if (deepLink == MainActivity.DEST_DASHBOARD) {
+                        onConsumePendingDestination()
                     }
                 }
             )

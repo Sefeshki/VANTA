@@ -152,10 +152,18 @@ class SmsProcessor(
             .takeIf { it >= 0 }
             ?: intent.getIntExtra("android.telephony.extra.SUBSCRIPTION_INDEX", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
                 .takeIf { it >= 0 }
+            ?: intent.getIntExtra("sub_id", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .takeIf { it >= 0 }
+            ?: intent.getIntExtra("subscription_id", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+                .takeIf { it >= 0 }
             ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID
 
         if (rawSubId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            val resolvedSlot = simManager.resolveSlotFromSubId(rawSubId)
+            var resolvedSlot = simManager.resolveSlotFromSubId(rawSubId)
+            if (resolvedSlot !in 0..1) {
+                simManager.refreshSims()
+                resolvedSlot = simManager.resolveSlotFromSubId(rawSubId)
+            }
             if (resolvedSlot in 0..1) {
                 return resolvedSlot to rawSubId
             }

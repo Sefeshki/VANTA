@@ -95,6 +95,12 @@ interface TelegramBotApi {
         showAlert: Boolean = false
     ): Result<Unit>
 
+    suspend fun deleteMessage(
+        token: String,
+        chatId: Long,
+        messageId: Long
+    ): Result<Unit> = Result.success(Unit)
+
     suspend fun getUpdates(token: String, offset: Long?, limit: Int = 10): Result<List<TelegramUpdate>>
     fun sanitizeToken(raw: String): String
 }
@@ -324,6 +330,42 @@ class TelegramApiClient : TelegramBotApi {
                 } else {
                     put("reply_markup", JSONObject().put("inline_keyboard", JSONArray()))
                 }
+            }
+            val request = Request.Builder()
+                .url(url)
+                .post(payload.toString().toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyString = response.body?.string() ?: ""
+                if (!response.isSuccessful) {
+                    if (bodyString.contains("message is not modified", ignoreCase = true)) {
+                        return@withContext Result.success(Unit)
+                    }
+                    return@withContext Result.failure(Exception(parseErrorDescription(bodyString, response.code)))
+                }
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(formatException(e))
+        }
+    }
+
+    override suspend fun deleteMessage(
+        token: String,
+        chatId: Long,
+        messageId: Long
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val cleanToken = sanitizeToken(token)
+        if (cleanToken.isBlank()) {
+            return@withContext Result.failure(IllegalArgumentException("Bot token not configured"))
+        }
+
+        try {
+            val url = "https://api.telegram.org/bot$cleanToken/deleteMessage"
+            val payload = JSONObject().apply {
+                put("chat_id", chatId)
+                put("message_id", messageId)
             }
             val request = Request.Builder()
                 .url(url)

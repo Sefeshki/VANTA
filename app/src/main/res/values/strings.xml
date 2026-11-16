@@ -1,5 +1,11 @@
 <resources>
     <string name="app_name">VANTA</string>
-    <string name="widget_status_name">VANTA Live Status</string>
-    <string name="widget_status_description">Minimalist status indicator for Internet, Telegram, and SMS forwarding.</string>
+    <string name="widget_compact_name">VANTA Compact</string>
+    <string name="widget_compact_description">Minimal 2×1 status bar showing Internet and Telegram connectivity.</string>
+    <string name="widget_sim_status_name">VANTA SIM Status</string>
+    <string name="widget_sim_status_description">2×2 dual-SIM monitor showing SIM 1 and SIM 2 availability and forwarding status.</string>
+    <string name="widget_status_panel_name">VANTA Status Panel</string>
+    <string name="widget_status_panel_description">4×2 panel for Internet, Telegram, VANTA Service, and SIM 1 / SIM 2 status.</string>
+    <string name="widget_overview_name">VANTA Full Overview</string>
+    <string name="widget_overview_description">2×4 vertical telemetry overview including connectivity, service uptime, SIM carrier details, and delivery counts.</string>
 </resources>

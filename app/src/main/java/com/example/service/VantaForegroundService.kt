@@ -24,6 +24,7 @@ class VantaForegroundService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var isPaused = false
+    private var stoppedByUserOrPause = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -39,9 +40,11 @@ class VantaForegroundService : Service() {
 
         when (action) {
             ACTION_STOP -> {
+                stoppedByUserOrPause = true
                 EventLogger.log(LogCategory.SERVICE, "Stopping VANTA Foreground Service by user action", LogLevel.INFO)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(false)
+                app?.preferencesManager?.setServiceExpectedRunning(false)
                 app?.callMonitorManager?.stopMonitoring()
                 app?.setServiceRunning(false)
                 VantaWidgetUpdater.updateAllWidgets(this, force = true)
@@ -54,6 +57,7 @@ class VantaForegroundService : Service() {
                 EventLogger.log(LogCategory.SERVICE, "SMS Forwarding paused", LogLevel.WARNING)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(false)
+                app?.preferencesManager?.setServiceExpectedRunning(false)
                 app?.callMonitorManager?.stopMonitoring()
                 updateNotification()
                 VantaWidgetUpdater.updateAllWidgets(this)
@@ -61,16 +65,21 @@ class VantaForegroundService : Service() {
             }
             ACTION_RESUME -> {
                 isPaused = false
+                stoppedByUserOrPause = false
                 EventLogger.log(LogCategory.SERVICE, "SMS Forwarding resumed", LogLevel.SUCCESS)
                 val app = applicationContext as? VantaApplication
                 app?.preferencesManager?.setForwardingEnabled(true)
+                app?.preferencesManager?.setServiceExpectedRunning(true)
                 app?.callMonitorManager?.startMonitoring()
+                app?.serviceAlertManager?.onServiceStarted()
+                app?.serviceAlertManager?.evaluatePermissions()
                 updateNotification()
                 VantaWidgetUpdater.updateAllWidgets(this)
                 return START_STICKY
             }
             else -> {
                 isPaused = false
+                stoppedByUserOrPause = false
                 startInForeground()
             }
         }
@@ -90,8 +99,11 @@ class VantaForegroundService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
         val app = applicationContext as? VantaApplication
+        app?.preferencesManager?.setServiceExpectedRunning(true)
         app?.setServiceRunning(true)
         app?.callMonitorManager?.startMonitoring()
+        app?.serviceAlertManager?.onServiceStarted()
+        app?.serviceAlertManager?.evaluatePermissions()
         VantaWidgetUpdater.updateAllWidgets(this)
         EventLogger.log(LogCategory.SERVICE, "VANTA Foreground Service ACTIVE and running", LogLevel.SUCCESS)
     }
@@ -220,6 +232,9 @@ class VantaForegroundService : Service() {
         val app = applicationContext as? VantaApplication
         app?.callMonitorManager?.stopMonitoring()
         app?.setServiceRunning(false)
+        if (!stoppedByUserOrPause && app?.preferencesManager?.preferences?.value?.isForwardingEnabled == true) {
+            app.serviceAlertManager.onServiceUnexpectedlyStopped()
+        }
         EventLogger.log(LogCategory.SERVICE, "VANTA Foreground Service terminated", LogLevel.WARNING)
     }
 

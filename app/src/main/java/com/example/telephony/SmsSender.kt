@@ -158,9 +158,10 @@ class AndroidSmsGateway(
 
             sendOutcome.fold(
                 onSuccess = {
+                    val simLabel = simManager.formatSimDisplayLabel(slotIndex, simInfo.subId)
                     EventLogger.log(
                         LogCategory.SMS_DELIVERY,
-                        "Sent SMS reply to '$destination' via SIM ${slotIndex + 1} (${simInfo.carrierName})",
+                        "Sent SMS reply to '$destination' via $simLabel (subId=${simInfo.subId})",
                         LogLevel.SUCCESS
                     )
                     Result.success(

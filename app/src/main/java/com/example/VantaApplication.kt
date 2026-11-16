@@ -1,6 +1,7 @@
 package com.example
 
 import android.app.Application
+import android.os.SystemClock
 import com.example.core.EventLogger
 import com.example.core.NetworkMonitor
 import com.example.core.PreferencesManager
@@ -8,6 +9,7 @@ import com.example.data.model.BridgeStatus
 import com.example.data.model.LogCategory
 import com.example.data.model.LogLevel
 import com.example.data.queue.DeliveryQueueManager
+import com.example.service.ServiceAlertManager
 import com.example.service.VantaForegroundService
 import com.example.sms.SmsProcessor
 import com.example.telegram.TelegramBotManager
@@ -40,6 +42,8 @@ class VantaApplication : Application() {
         private set
     lateinit var smsGateway: SmsGateway
         private set
+    lateinit var serviceAlertManager: ServiceAlertManager
+        private set
     lateinit var deliveryQueueManager: DeliveryQueueManager
         private set
     lateinit var smsProcessor: SmsProcessor
@@ -49,6 +53,9 @@ class VantaApplication : Application() {
 
     private val _isServiceRunning = MutableStateFlow(false)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning.asStateFlow()
+
+    private val _serviceStartedElapsedMs = MutableStateFlow<Long?>(null)
+    val serviceStartedElapsedMs: StateFlow<Long?> = _serviceStartedElapsedMs.asStateFlow()
 
     override fun onCreate() {
         super.onCreate()
@@ -62,11 +69,23 @@ class VantaApplication : Application() {
         simManager = SimManager(this, preferencesManager)
         contactResolver = ContactResolver(this)
         smsGateway = AndroidSmsGateway(this, simManager, preferencesManager)
+        serviceAlertManager = ServiceAlertManager(this, preferencesManager)
         deliveryQueueManager = DeliveryQueueManager(
             telegramBotManager = telegramBotManager,
             preferencesManager = preferencesManager,
             simManager = simManager,
-            contactResolver = contactResolver
+            contactResolver = contactResolver,
+            onDeliverySuccess = {
+                serviceAlertManager.onForwardingRecovered()
+                VantaWidgetUpdater.updateAllWidgets(this)
+            },
+            onDeliveryDropped = { errorMsg ->
+                serviceAlertManager.onForwardingInterrupted(
+                    "SMS delivery failed after retries: $errorMsg",
+                    MainActivity.DEST_SYSTEM_HEALTH
+                )
+                VantaWidgetUpdater.updateAllWidgets(this)
+            }
         )
         smsProcessor = SmsProcessor(preferencesManager, simManager, deliveryQueueManager)
         callMonitorManager = CallMonitorManager(
@@ -81,6 +100,39 @@ class VantaApplication : Application() {
         telegramBotManager.isForwardingActiveProvider = {
             preferencesManager.preferences.value.isForwardingEnabled && _isServiceRunning.value
         }
+        telegramBotManager.isServiceRunningProvider = { _isServiceRunning.value }
+        telegramBotManager.serviceStartedElapsedProvider = { _serviceStartedElapsedMs.value }
+        telegramBotManager.isInternetAvailableProvider = { networkMonitor.checkCurrentInternet() }
+        telegramBotManager.pendingQueueCountProvider = { deliveryQueueManager.pendingCount.value }
+        telegramBotManager.onSetForwardingEnabled = { enabled ->
+            preferencesManager.setForwardingEnabled(enabled)
+            if (enabled) {
+                VantaForegroundService.start(this)
+                EventLogger.log(LogCategory.SYSTEM, "Forwarding turned ON via Telegram", LogLevel.SUCCESS)
+            } else {
+                VantaForegroundService.stop(this)
+                EventLogger.log(LogCategory.SYSTEM, "Forwarding turned OFF via Telegram", LogLevel.INFO)
+            }
+            VantaWidgetUpdater.updateAllWidgets(this, force = true)
+        }
+        telegramBotManager.onToggleSimMaster = { slotIndex, enabled ->
+            preferencesManager.setSimMasterEnabled(slotIndex, enabled)
+            VantaWidgetUpdater.updateAllWidgets(this, force = true)
+            EventLogger.log(
+                LogCategory.SIM,
+                "SIM ${slotIndex + 1} master switch turned ${if (enabled) "ON" else "OFF"} via Telegram",
+                LogLevel.INFO
+            )
+        }
+        telegramBotManager.onToggleOtpProtection = { enabled ->
+            preferencesManager.setOtpProtectionEnabled(enabled)
+            VantaWidgetUpdater.updateAllWidgets(this, force = true)
+            EventLogger.log(
+                LogCategory.SECURITY,
+                "OTP Protection turned ${if (enabled) "ON" else "OFF"} via Telegram",
+                LogLevel.INFO
+            )
+        }
         telegramBotManager.smsGateway = smsGateway
 
         val appScope = CoroutineScope(Dispatchers.IO)
@@ -93,27 +145,57 @@ class VantaApplication : Application() {
             }
         }
 
-        // Reactively update home screen widgets whenever real bridge/connectivity state changes
+        // Evaluate SIM disconnects/restorations and update home screen widgets when SIM state changes
+        appScope.launch {
+            simManager.detectedSims.collect { sims ->
+                serviceAlertManager.evaluateSims(sims)
+                if (VantaWidgetUpdater.hasWidgets(this@VantaApplication)) {
+                    VantaWidgetUpdater.updateAllWidgets(this@VantaApplication)
+                }
+            }
+        }
+
+        // Reactively evaluate Telegram connectivity alerts and update home screen widgets
         appScope.launch {
             val bridgeStateFlow = combine(
                 isServiceRunning,
                 preferencesManager.preferences,
                 preferencesManager.telegramConfig
             ) { running, prefs, tgConfig ->
-                Triple(prefs.isForwardingEnabled && running, prefs.simControl.summaryLabel(), tgConfig.hasToken)
+                Triple(prefs.isForwardingEnabled && running, prefs.simControl, tgConfig)
             }
             val networkStateFlow = combine(
                 networkMonitor.isInternetAvailable,
                 networkMonitor.isTelegramReachable,
-                telegramBotManager.isConnected
-            ) { internet, tgReachable, botConnected ->
-                Triple(internet, tgReachable, botConnected)
+                telegramBotManager.isConnected,
+                deliveryQueueManager.pendingCount
+            ) { internet, tgReachable, botConnected, pending ->
+                listOf(internet, tgReachable, botConnected, pending)
             }
             combine(bridgeStateFlow, networkStateFlow) { bridge, network ->
                 bridge to network
             }
                 .distinctUntilChanged()
-                .collect {
+                .collect { (bridge, network) ->
+                    val tgConfig = bridge.third
+                    val prefs = preferencesManager.preferences.value
+                    val isInternet = network[0] as Boolean
+                    val isTgReachable = network[1] as Boolean
+                    val isBotConnected = network[2] as Boolean
+                    val isTelegramLive = if (tgConfig.hasToken) {
+                        (isBotConnected || isTgReachable) && isInternet
+                    } else {
+                        isTgReachable && isInternet
+                    }
+
+                    serviceAlertManager.evaluateTelegramConnectivity(
+                        hasToken = tgConfig.hasToken,
+                        authorizedChatId = tgConfig.authorizedChatId,
+                        isForwardingEnabled = prefs.isForwardingEnabled,
+                        isTelegramLive = isTelegramLive
+                    )
+                    serviceAlertManager.evaluatePermissions()
+
                     if (VantaWidgetUpdater.hasWidgets(this@VantaApplication)) {
                         VantaWidgetUpdater.updateAllWidgets(this@VantaApplication)
                     }
@@ -129,6 +211,13 @@ class VantaApplication : Application() {
 
     fun setServiceRunning(running: Boolean) {
         _isServiceRunning.value = running
+        if (running) {
+            if (_serviceStartedElapsedMs.value == null) {
+                _serviceStartedElapsedMs.value = SystemClock.elapsedRealtime()
+            }
+        } else {
+            _serviceStartedElapsedMs.value = null
+        }
         VantaWidgetUpdater.updateAllWidgets(this)
     }
 
@@ -158,3 +247,4 @@ class VantaApplication : Application() {
             private set
     }
 }
+

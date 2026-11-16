@@ -28,7 +28,9 @@ class DeliveryQueueManager(
     private val telegramBotManager: TelegramBotManager,
     private val preferencesManager: PreferencesManager,
     private val simManager: SimManager? = null,
-    private val contactResolver: ContactResolver? = null
+    private val contactResolver: ContactResolver? = null,
+    private val onDeliverySuccess: (() -> Unit)? = null,
+    private val onDeliveryDropped: ((String) -> Unit)? = null
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val mutex = Mutex()
@@ -126,6 +128,7 @@ class DeliveryQueueManager(
                 item.status = DeliveryStatus.DELIVERED
                 processedFingerprints[computeFingerprint(item.sms)] = System.currentTimeMillis()
                 queue.remove(item)
+                onDeliverySuccess?.invoke()
             } else {
                 val errorMsg = result.exceptionOrNull()?.message ?: "Unknown error"
                 item.lastError = errorMsg
@@ -137,6 +140,7 @@ class DeliveryQueueManager(
                         "SMS from '${item.sms.sender}' dropped after $MAX_RETRIES delivery attempts: $errorMsg",
                         LogLevel.ERROR
                     )
+                    onDeliveryDropped?.invoke(errorMsg)
                 } else {
                     val backoffDelay = (1000L * (1 shl item.attemptCount)).coerceAtMost(30000L)
                     EventLogger.log(

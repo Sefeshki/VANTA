@@ -71,6 +71,7 @@ data class RecordedEdit(
     val chatId: Long,
     val messageId: Long,
     val text: String,
+    val entities: List<TelegramEntity>,
     val keyboardRows: List<List<InlineButton>>
 )
 
@@ -84,6 +85,7 @@ class FakeTelegramBotApi : TelegramBotApi {
     var nextMsgId = 100L
     val sentMessages = mutableListOf<RecordedSend>()
     val editedMessages = mutableListOf<RecordedEdit>()
+    val deletedMessages = mutableListOf<Pair<Long, Long>>()
     val answeredCallbacks = mutableListOf<Pair<String, String?>>()
 
     override suspend fun getMe(token: String): Result<TelegramUser> =
@@ -124,7 +126,12 @@ class FakeTelegramBotApi : TelegramBotApi {
         entities: List<TelegramEntity>,
         keyboardRows: List<List<InlineButton>>
     ): Result<Unit> {
-        editedMessages.add(RecordedEdit(chatId, messageId, text, keyboardRows))
+        editedMessages.add(RecordedEdit(chatId, messageId, text, entities, keyboardRows))
+        return Result.success(Unit)
+    }
+
+    override suspend fun deleteMessage(token: String, chatId: Long, messageId: Long): Result<Unit> {
+        deletedMessages.add(chatId to messageId)
         return Result.success(Unit)
     }
 
@@ -367,7 +374,7 @@ class SimControlAndReplyTest {
     }
 
     @Test
-    fun testTelegramReplyFlowSimSwitchCancelAuthMultiUserAndDeduplication() = runBlocking {
+    fun testTelegramReplyFlowOriginatingSimCancelAuthMultiUserAndDeduplication() = runBlocking {
         val prefsMgr = PreferencesManager(context)
         prefsMgr.saveBotToken("123456789:ABCdefGhIJKlmNoPQRstuVWXyz_Test", "vanta_bot", 1L)
         prefsMgr.setAuthorizedChatId(9001L)
@@ -388,19 +395,21 @@ class SimControlAndReplyTest {
             }
         }
 
-        // 1. Forward SMS from SIM 1 -> captures reply:<contextId> button
+        // 1. Forward SMS received on SIM 2 (subId=20) -> captures notification messageId=100 & reply:<contextId> button
+        val receivedTs = 1715000000000L
         val fwdRes = botManager.forwardSms(
             sender = "+14155550199",
             body = "Meet at 5?",
-            simLabel = "SIM 1 · Alpha",
+            simLabel = "SIM 2 · Beta",
             contactName = "Sarah",
-            receivedTimestamp = 1715000000000L,
+            receivedTimestamp = receivedTs,
             isOtp = false,
-            simSlot = 0,
-            subId = 10
+            simSlot = 1,
+            subId = 20
         )
         assertTrue(fwdRes.isSuccess)
-        val replyCallback = fakeApi.sentMessages.last().keyboardRows.flatten().first().callbackData!!
+        val notifMsgId = fwdRes.getOrThrow().messageId
+        val replyCallback = fakeApi.sentMessages.last().keyboardRows.flatten().first { it.text == "Reply" }.callbackData!!
         assertTrue(replyCallback.startsWith("reply:"))
 
         // 2. Unauthorized chat tapping reply callback must be rejected
@@ -414,13 +423,14 @@ class SimControlAndReplyTest {
                 text = null,
                 callbackQueryId = "cb_unauth",
                 callbackData = replyCallback,
-                callbackMessageId = 100L
+                callbackMessageId = notifMsgId
             )
         )
         assertNull(botManager.getActiveSession(9999L, 88L))
         assertEquals("Unauthorized", fakeApi.answeredCallbacks.last().second)
 
-        // 3. Authorized user taps Reply -> starts session defaulting to SIM 0
+        // 3. Authorized user 101 taps Reply -> asks exact prompt with single Cancel inline button underneath
+        val sendsBeforeReplyTap = fakeApi.sentMessages.size
         botManager.handleUpdate(
             TelegramUpdate(
                 updateId = 2L,
@@ -431,15 +441,32 @@ class SimControlAndReplyTest {
                 text = null,
                 callbackQueryId = "cb_1",
                 callbackData = replyCallback,
-                callbackMessageId = 100L
+                callbackMessageId = notifMsgId
             )
         )
         val promptSend = fakeApi.sentMessages.last()
-        assertTrue(promptSend.text.contains("Sarah (+14155550199)"))
-        assertTrue(promptSend.text.contains("SIM 1 · Alpha"))
-        val sim2SwitchData = promptSend.keyboardRows.flatten().first { it.callbackData?.endsWith(":1") == true }.callbackData!!
+        assertEquals("Send the message you want to reply:", promptSend.text)
+        assertEquals(1, promptSend.keyboardRows.flatten().size)
+        assertEquals("Cancel", promptSend.keyboardRows.flatten().first().text)
+        assertEquals(1, botManager.getActiveSession(9001L, 101L)?.selectedSlotIndex)
 
-        // Concurrent second user opens separate session cleanly without disturbing user 101
+        // Tapping Reply a second time while already in Reply mode for same SMS must not spawn duplicate prompts
+        botManager.handleUpdate(
+            TelegramUpdate(
+                updateId = 20L,
+                messageId = null,
+                chatId = 9001L,
+                userId = 101L,
+                userName = "alice",
+                text = null,
+                callbackQueryId = "cb_1_dup",
+                callbackData = replyCallback,
+                callbackMessageId = notifMsgId
+            )
+        )
+        assertEquals(sendsBeforeReplyTap + 1, fakeApi.sentMessages.size)
+
+        // Concurrent second user 202 opens separate session cleanly without disturbing user 101
         botManager.handleUpdate(
             TelegramUpdate(
                 updateId = 3L,
@@ -450,44 +477,35 @@ class SimControlAndReplyTest {
                 text = null,
                 callbackQueryId = "cb_2",
                 callbackData = replyCallback,
-                callbackMessageId = 100L
+                callbackMessageId = notifMsgId
             )
         )
         assertNotNull(botManager.getActiveSession(9001L, 101L))
         assertNotNull(botManager.getActiveSession(9001L, 202L))
+        val bobPromptMsgId = 102L
+        val bobCancelCb = fakeApi.sentMessages.last().keyboardRows.flatten().first().callbackData!!
 
-        // User 202 cancels via /cancel -> does not affect user 101's session
+        // User 202 presses Cancel -> cancels Bob's session, shows "Canceled.", sends NO SMS, leaves Alice's session intact
         botManager.handleUpdate(
             TelegramUpdate(
                 updateId = 4L,
-                messageId = 500L,
+                messageId = null,
                 chatId = 9001L,
                 userId = 202L,
                 userName = "bob",
-                text = "/cancel"
+                text = null,
+                callbackQueryId = "cb_bob_cancel",
+                callbackData = bobCancelCb,
+                callbackMessageId = bobPromptMsgId
             )
         )
         assertNull(botManager.getActiveSession(9001L, 202L))
         assertNotNull(botManager.getActiveSession(9001L, 101L))
+        assertEquals(0, fakeGateway.dispatched.size)
+        assertEquals("Canceled.", fakeApi.editedMessages.last().text)
+        assertTrue(fakeApi.editedMessages.last().keyboardRows.isEmpty())
 
-        // 4. User 101 switches SIM to SIM 2
-        botManager.handleUpdate(
-            TelegramUpdate(
-                updateId = 5L,
-                messageId = null,
-                chatId = 9001L,
-                userId = 101L,
-                userName = "alice",
-                text = null,
-                callbackQueryId = "cb_sim2",
-                callbackData = sim2SwitchData,
-                callbackMessageId = 101L
-            )
-        )
-        assertEquals(1, botManager.getActiveSession(9001L, 101L)?.selectedSlotIndex)
-        assertTrue(fakeApi.editedMessages.last().text.contains("SIM 2 · Beta"))
-
-        // 5. Sending text dispatches SMS on SIM 2 and consumes session
+        // 4. User 101 sends text reply -> dispatches via SIM 2 (subId 20) & appends "You replied:" to original SMS notification
         botManager.handleUpdate(
             TelegramUpdate(
                 updateId = 6L,
@@ -503,9 +521,16 @@ class SimControlAndReplyTest {
         assertEquals("On my way!", fakeGateway.dispatched.first().messageText)
         assertEquals(1, fakeGateway.dispatched.first().slotIndex)
         assertNull("Session should clear after sending", botManager.getActiveSession(9001L, 101L))
-        assertTrue(fakeApi.editedMessages.last().text.contains("✓ SMS delivered to carrier"))
 
-        // 6. Duplicate update/messageId must NOT dispatch SMS again
+        val notifEdit = fakeApi.editedMessages.last { it.messageId == notifMsgId }
+        assertTrue(notifEdit.text.contains("Sarah (+14155550199)"))
+        assertTrue(notifEdit.text.contains("SIM: SIM 2 · Beta"))
+        assertTrue(notifEdit.text.contains("Time: ${TelegramEntityHelper.formatTimestamp(receivedTs)}"))
+        assertTrue(notifEdit.text.contains("Meet at 5?"))
+        assertTrue(notifEdit.text.contains("You replied:\nOn my way!"))
+        assertTrue("Temporary prompt should be deleted after successful edit", fakeApi.deletedMessages.any { it.second == 101L })
+
+        // 5. Duplicate update/messageId retry must NOT dispatch SMS again
         botManager.handleUpdate(
             TelegramUpdate(
                 updateId = 6L,
@@ -544,27 +569,137 @@ class SimControlAndReplyTest {
         assertTrue(fakeApi.answeredCallbacks.last().second?.contains("alphanumeric") == true)
 
         // Dialable sender -> test Cancel inline button
-        botManager.forwardSms("+15551234567", "Hey", "SIM 1 · Alpha", simSlot = 0, subId = 10)
+        val fwdMsg = botManager.forwardSms("+15551234567", "Hey", "SIM 1 · Alpha", simSlot = 0, subId = 10).getOrThrow()
         val validCb = fakeApi.sentMessages.last().keyboardRows.flatten().first().callbackData!!
         botManager.handleUpdate(
-            TelegramUpdate(11L, null, 9001L, 101L, "alice", null, "cb_start1", validCb, 101L)
+            TelegramUpdate(11L, null, 9001L, 101L, "alice", null, "cb_start1", validCb, fwdMsg.messageId)
         )
         val cancelCb = fakeApi.sentMessages.last().keyboardRows.flatten().first { it.text == "Cancel" }.callbackData!!
         botManager.handleUpdate(
             TelegramUpdate(12L, null, 9001L, 101L, "alice", null, "cb_cancel", cancelCb, 102L)
         )
         assertNull(botManager.getActiveSession(9001L, 101L))
+        assertEquals("Canceled.", fakeApi.editedMessages.last().text)
+        assertEquals(0, failingGateway.dispatched.size)
 
-        // Start another session and test SmsGateway failure reports accurately (never claims success)
+        // Pressing Cancel again on expired prompt must not fail or send SMS
         botManager.handleUpdate(
-            TelegramUpdate(13L, null, 9001L, 101L, "alice", null, "cb_start2", validCb, 101L)
+            TelegramUpdate(120L, null, 9001L, 101L, "alice", null, "cb_cancel_dup", cancelCb, 102L)
+        )
+        assertEquals("Reply session expired.", fakeApi.answeredCallbacks.last().second)
+
+        // Start another session and test SmsGateway failure reports accurately (never edits original notification with "You replied:")
+        botManager.handleUpdate(
+            TelegramUpdate(13L, null, 9001L, 101L, "alice", null, "cb_start2", validCb, fwdMsg.messageId)
         )
         botManager.handleUpdate(
             TelegramUpdate(14L, 600L, 9001L, 101L, "alice", "Reply attempt")
         )
+        assertFalse(
+            "Original SMS notification must NOT receive You replied on send failure",
+            fakeApi.editedMessages.any { it.messageId == fwdMsg.messageId }
+        )
         val lastEdit = fakeApi.editedMessages.last().text
-        assertTrue("Failure must report error", lastEdit.contains("✕ SMS failed to send"))
+        assertTrue("Failure must report error", lastEdit.contains("✕ Failed to send SMS reply"))
         assertTrue("Failure must include exact reason", lastEdit.contains("Carrier radio off"))
+    }
+
+    @Test
+    fun testTelegramInlineKeyboardNavigationControlsAndCallbackAuthorization() = runBlocking {
+        val prefsMgr = PreferencesManager(context)
+        prefsMgr.saveBotToken("123456789:ABCdefGhIJKlmNoPQRstuVWXyz_Test", "vanta_bot", 1L)
+        prefsMgr.setAuthorizedChatId(9001L)
+        prefsMgr.setForwardingEnabled(false)
+
+        val fakeApi = FakeTelegramBotApi()
+        var serviceRunning = false
+        val botManager = TelegramBotManager(prefsMgr, fakeApi, autoStartPolling = false).apply {
+            simInfoProvider = {
+                listOf(
+                    SimCardInfo(0, 12, "Alpha", "+10001", true, true, hasPermission = true, isDefaultSms = true),
+                    SimCardInfo(1, -1, "No SIM inserted", null, false, false, hasPermission = true)
+                )
+            }
+            isServiceRunningProvider = { serviceRunning }
+            isForwardingActiveProvider = { prefsMgr.preferences.value.isForwardingEnabled && serviceRunning }
+            isInternetAvailableProvider = { true }
+            onSetForwardingEnabled = { enabled ->
+                prefsMgr.setForwardingEnabled(enabled)
+                serviceRunning = enabled
+            }
+        }
+
+        // 1. Plain non-slash message opens interactive Overview panel with organized inline buttons (no custom button styles)
+        botManager.handleUpdate(TelegramUpdate(100L, 1L, 9001L, 101L, "owner", "hi"))
+        val menuSend = fakeApi.sentMessages.last()
+        val menuMsgId = 100L
+        assertTrue(menuSend.text.contains("VANTA Overview"))
+        val menuButtons = menuSend.keyboardRows.flatten()
+        assertTrue(menuButtons.any { it.callbackData == "menu:sims" })
+        assertTrue(menuButtons.any { it.callbackData == "menu:service" })
+        assertTrue(menuButtons.any { it.callbackData == "menu:forwarding" })
+        assertTrue(menuButtons.any { it.callbackData == "menu:controls" })
+        assertTrue(menuButtons.any { it.callbackData == "menu:help" })
+        assertTrue("Inline buttons must not set custom style", menuButtons.all { it.style == null })
+
+        // 2. Unauthorized chat tapping menu button must be rejected cleanly
+        val editsBeforeUnauth = fakeApi.editedMessages.size
+        botManager.handleUpdate(
+            TelegramUpdate(101L, null, 8888L, 77L, "intruder", null, "cb_bad_menu", "menu:sims", menuMsgId)
+        )
+        assertEquals("Unauthorized", fakeApi.answeredCallbacks.last().second)
+        assertEquals(editsBeforeUnauth, fakeApi.editedMessages.size)
+
+        // 3. Navigate SIM Info -> edits existing message in place (does not send extra messages)
+        val sendsBeforeNav = fakeApi.sentMessages.size
+        botManager.handleUpdate(
+            TelegramUpdate(102L, null, 9001L, 101L, "owner", null, "cb_sims", "menu:sims", menuMsgId)
+        )
+        assertEquals(sendsBeforeNav, fakeApi.sentMessages.size)
+        val simPanelEdit = fakeApi.editedMessages.last()
+        assertTrue(simPanelEdit.text.contains("SIM Information"))
+        assertTrue(simPanelEdit.text.contains("Carrier: Alpha (Sub #12)"))
+        assertTrue(simPanelEdit.text.contains("No SIM inserted"))
+
+        // 4. Toggle SIM 1 master OFF via inline button in SIM Info panel
+        val sim1ToggleCb = simPanelEdit.keyboardRows.flatten().first { it.callbackData!!.startsWith("act:sim_toggle:0") }.callbackData!!
+        botManager.handleUpdate(
+            TelegramUpdate(103L, null, 9001L, 101L, "owner", null, "cb_sim1_off", sim1ToggleCb, menuMsgId)
+        )
+        assertFalse(prefsMgr.preferences.value.simControl.sim1.masterEnabled)
+        assertEquals("SIM 1 disabled", fakeApi.answeredCallbacks.last().second)
+
+        // 5. Navigate Service panel and Start Service via button
+        botManager.handleUpdate(
+            TelegramUpdate(104L, null, 9001L, 101L, "owner", null, "cb_svc", "menu:service", menuMsgId)
+        )
+        assertTrue(fakeApi.editedMessages.last().text.contains("Service Status"))
+        val startSvcCb = fakeApi.editedMessages.last().keyboardRows.flatten().first { it.callbackData!!.startsWith("act:svc_toggle") }.callbackData!!
+        botManager.handleUpdate(
+            TelegramUpdate(105L, null, 9001L, 101L, "owner", null, "cb_svc_go", startSvcCb, menuMsgId)
+        )
+        assertTrue(prefsMgr.preferences.value.isForwardingEnabled)
+        assertTrue(serviceRunning)
+        assertTrue(fakeApi.editedMessages.last().text.contains("Foreground Service: ACTIVE"))
+
+        // 6. Navigate Forwarding status & verify Controls OTP guard when no SIM has OTP enabled
+        prefsMgr.setSimFeatureEnabled(0, SimFeature.OTP_MESSAGES, false)
+        prefsMgr.setSimFeatureEnabled(1, SimFeature.OTP_MESSAGES, false)
+        botManager.handleUpdate(
+            TelegramUpdate(106L, null, 9001L, 101L, "owner", null, "cb_ctrl", "menu:controls", menuMsgId)
+        )
+        val otpToggleCb = fakeApi.editedMessages.last().keyboardRows.flatten().first { it.callbackData!!.startsWith("act:otp_toggle") }.callbackData!!
+        botManager.handleUpdate(
+            TelegramUpdate(107L, null, 9001L, 101L, "owner", null, "cb_otp_locked", otpToggleCb, menuMsgId)
+        )
+        assertFalse("OTP protection must stay locked when both SIMs have OTP off", prefsMgr.preferences.value.isOtpProtectionEnabled)
+        assertTrue(fakeApi.answeredCallbacks.last().second!!.contains("Enable OTP forwarding on at least one SIM"))
+
+        // 7. Unknown/expired callback handled gracefully
+        botManager.handleUpdate(
+            TelegramUpdate(108L, null, 9001L, 101L, "owner", null, "cb_exp", "legacy:dead", menuMsgId)
+        )
+        assertEquals("Action expired or unavailable.", fakeApi.answeredCallbacks.last().second)
     }
 
     @Test

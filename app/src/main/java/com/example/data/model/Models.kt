@@ -142,7 +142,8 @@ data class SimCardInfo(
     val isSelected: Boolean,
     val countryIso: String? = null,
     val iccId: String? = null,
-    val hasPermission: Boolean = true
+    val hasPermission: Boolean = true,
+    val isDefaultSms: Boolean = false
 )
 
 enum class LogCategory {
@@ -188,8 +189,25 @@ data class SmsReplyContext(
     val senderName: String?,
     val simSlot: Int,
     val subId: Int,
-    val receivedTimestamp: Long
+    val receivedTimestamp: Long,
+    val messageBody: String = "",
+    val isOtp: Boolean = false,
+    val forwardedChatIds: List<Long> = emptyList(),
+    val simLabel: String? = null,
+    val notificationMessageId: Long? = null,
+    val sentReplies: List<String> = emptyList()
 )
+
+data class ForwardDestination(
+    val chatId: Long,
+    val label: String,
+    val addedAt: Long = System.currentTimeMillis()
+) {
+    fun displayName(): String {
+        val clean = label.trim()
+        return if (clean.isNotBlank()) "$clean ($chatId)" else chatId.toString()
+    }
+}
 
 enum class CallType(val label: String) {
     INCOMING("Incoming Call"),
@@ -233,7 +251,8 @@ data class TelegramConfig(
     val botId: Long? = null,
     val authorizedChatId: Long? = null,
     val activePairingCode: String? = null,
-    val pairingCodeExpiry: Long = 0L
+    val pairingCodeExpiry: Long = 0L,
+    val forwardDestinations: List<ForwardDestination> = emptyList()
 )
 
 data class BridgeStatus(

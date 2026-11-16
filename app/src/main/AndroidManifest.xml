@@ -42,6 +42,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.VANTA">
             <intent-filter>
@@ -90,11 +91,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- Home Screen Live Status Widget -->
+        <!-- Home Screen Widget Collection -->
         <receiver
-            android:name=".widget.VantaStatusWidgetProvider"
+            android:name=".widget.VantaCompactWidgetProvider"
             android:exported="true"
-            android:label="@string/widget_status_name">
+            android:label="@string/widget_compact_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -102,7 +103,49 @@
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/vanta_status_widget_info" />
+                android:resource="@xml/vanta_widget_compact_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.VantaSimStatusWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_sim_status_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/vanta_widget_sim_status_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.VantaStatusPanelWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_status_panel_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/vanta_widget_status_panel_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.VantaOverviewWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_overview_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/vanta_widget_overview_info" />
         </receiver>
 
         <!-- FileProvider for installing downloaded APK updates -->
