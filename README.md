@@ -1,10 +1,10 @@
-<div align="center">
+ <div align="center">
+
 <img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
 **Your phone. Your SIM. Your Telegram.**
 
-A simple Android app that turns a spare phone into your personal SMS gateway.  
-Messages arrive on your device and get forwarded straight to Telegram.
+A simple Android app that turns a spare phone into your personal SMS gateway. Messages arrive on your device and get forwarded straight to Telegram.
 
 <br/>
 
@@ -16,6 +16,7 @@ Messages arrive on your device and get forwarded straight to Telegram.
 <br/><br/>
 
 [DOWNLOAD](https://github.com/Sefeshki/VANTA/releases/latest) · [SOURCE CODE](https://github.com/Sefeshki/VANTA) · [DEVELOPER](https://github.com/Sefeshki)
+
 </div>
 
 ---
@@ -24,9 +25,9 @@ Messages arrive on your device and get forwarded straight to Telegram.
 
 Got an old Android phone? Give it a job.
 
-VANTA runs on your phone, connects to your own Telegram bot, and forwards incoming SMS messages to you. No extra servers. No third-party services. Just your phone and your Telegram.
+VANTA runs on your phone, connects to your own Telegram bot, and forwards incoming SMS messages to you. No extra servers or third-party forwarding services.
 
-It supports dual-SIM, works reliably in the background, and was optimized for low RAM and battery usage on both old and new phones.
+It supports dual-SIM devices and is designed for reliable background operation on both older and newer Android phones.
 
 ---
 
@@ -36,108 +37,106 @@ It supports dual-SIM, works reliably in the background, and was optimized for lo
 <tr>
 <td width="50%">
 
-#### SMS Bridge
-- Automatic SMS forwarding
-- Dual-SIM support with individual controls
-- Reply to SMS from Telegram
-- Forward messages to other chats
-- Duplicate protection
-- Reliable background service
+#### SMS & SIM Management
+
+- Automatic incoming SMS forwarding
+- Dual-SIM support with dedicated SIM management
+- Individual forwarding controls for each SIM
+- Accurate SIM identification and carrier information
+- Reply to SMS through Telegram using the original SIM
+- Forward messages to other configured Telegram destinations
+- Duplicate message protection
 
 </td>
 <td width="50%">
 
 #### Telegram
-- Your own bot
-- Interactive buttons for everything
-- Check status, SIMs, and forwarding
-- Reply and forward right from the message
+
+- Connect your own Telegram bot
+- Secure bot setup, verification, and pairing
+- Interactive inline keyboard controls
+- View service status, SIM information, and forwarding status
+- Reply and forward directly from incoming messages
+- Built-in BotFather setup guidance
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-#### Privacy
-- Credentials encrypted with Android Keystore
-- HTTPS only
-- Only authorized users can control it
-- Optional OTP filtering
-- Clean disconnect
+#### Monitoring & Widgets
+
+- Live internet, Telegram, and forwarding status
+- Connection diagnostics and automatic recovery
+- Notifications for connection, SIM, permission, and forwarding issues
+- Recovery notifications when problems are resolved
+- Four Android home-screen widgets for quick status checks
+- Optional automatic startup on boot
+- Battery optimization guidance
 
 </td>
 <td width="50%">
 
-#### System
-- Live service monitoring
-- Widgets for quick status
-- Auto-start on boot
-- Battery optimization tips
-- Clear alerts when something goes wrong
+#### Privacy & Settings
+
+- Android Keystore-backed AES-256-GCM credential encryption
+- HTTPS communication with Telegram
+- Authorized Telegram user checks
+- Optional OTP protection, disabled by default
+- Secure credential cleanup on disconnect
+- Customizable accent themes
+- Permission Center and service settings
+- No remote shell execution
 
 </td>
 </tr>
 </table>
 
----
+Incoming messages show which SIM received them. When replying, VANTA uses that same SIM. The bot lets you enter a reply or cancel it, and a successful reply is added beneath the original Telegram message. Forwarding sends the message to another configured Telegram destination.
 
-### SIM Management
-
-There’s a simple section in the app where you can manage each SIM separately — turn forwarding on/off, see carrier info, and check status.
-
----
-
-### Telegram Controls
-
-Most things are controlled with buttons inside the bot.
-
-When an SMS arrives you can reply using the same SIM or forward it to another Telegram chat. Replies show up under the original message so it’s easy to follow.
-
----
-
-### Widgets & Monitoring
-
-VANTA has widgets so you can see the live status without opening the app.
-
-It also watches the service and notifies you if the connection drops, a SIM has problems, or forwarding fails — then tells you when it’s recovered.
+The widgets provide different layouts for checking your device, SIMs, connectivity, and forwarding status without opening the app. Tapping one opens VANTA.
 
 ---
 
 ### How it works
 
-Everything runs on your phone and talks directly to Telegram.  
-No extra server needed.
+Everything runs on your phone and communicates directly with the official Telegram Bot API. No separate server is needed.
 
-Your phone receives the SMS. With internet it gets sent to Telegram. Most settings still work offline.
+Your phone receives the SMS and sends it to Telegram when an internet connection is available. VANTA monitors internet connectivity separately from Telegram availability and forwarding status, so being online doesn't automatically mean the service is working.
 
 ---
 
 ### Security
 
-Credentials are protected with Android Keystore encryption.  
-Communication is HTTPS only.  
-Only people you authorize can use the bot.  
-OTP filtering is optional and stays off by default.
+Credentials are protected using Android Keystore-backed AES-256-GCM encryption. All communication with Telegram uses HTTPS, and only authorized users can interact with your bot.
 
-The whole point of the app is to send your SMS to the Telegram destination you choose. Keep your bot token private.
+OTP protection is optional and disabled by default. Credentials are cleared when you disconnect.
+
+Your SMS messages are sent to the Telegram destination you configure. Keep your bot token private and only authorize people you trust.
 
 ---
 
 ### Getting started
 
-**1. Create your bot**  
-Open [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token.
+**1. Create your bot**
 
-**2. Connect VANTA**  
-Install the app → paste the token → verify → generate pairing code → send `/start YOUR_CODE` to your bot.
+Open [@BotFather](https://t.me/BotFather), send `/newbot`, choose a name and username, then copy the API token.
 
-**3. Permissions**  
-Grant SMS, notification, and phone-state permissions. Set your SIM preferences.
+**2. Connect VANTA**
 
-**4. Turn it on**  
-Enable forwarding on the Dashboard.
+Install the app, open Telegram Setup, paste your token, and verify it. Generate a pairing code, open your bot, and send:
 
-Done.
+`/start YOUR_CODE`
+
+**3. Grant permissions**
+
+Open the Permission Center and grant the required SMS, notification, and phone-state permissions. Configure your SIMs and check the battery optimization guidance.
+
+**4. Turn it on**
+
+Return to the Dashboard and enable forwarding.
+
+That's it. Your phone is now your SMS bridge.
 
 ---
 
@@ -149,19 +148,20 @@ Done.
 
 ### License
 
-Source-available under the PolyForm Noncommercial License 1.0.0.  
-Free for noncommercial use. Commercial use needs permission.
+Source-available under the [PolyForm Noncommercial License 1.0.0](https://github.com/Sefeshki/VANTA/blob/main/LICENSE).
+
+Free for noncommercial use. Commercial use requires permission from the author.
 
 See [LICENSE](https://github.com/Sefeshki/VANTA/blob/main/LICENSE) for details.
 
 ---
 
-Found a bug or have a suggestion?  
-Open an issue on GitHub or message me: [t.me/sefeshki](https://t.me/sefeshki)
+Found a bug or have a suggestion? Open an issue on GitHub or message me: [t.me/sefeshki](https://t.me/sefeshki)
 
 ---
 
 <div align="center">
+
 <img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
 
 Made by [Sefeshki](https://github.com/Sefeshki)
