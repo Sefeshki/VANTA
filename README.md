@@ -1,4 +1,4 @@
-<div align="center">
+ <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
@@ -49,7 +49,7 @@ VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing 
 - Individual forwarding controls
 - SIM and carrier identification
 - Duplicate message protection
-- Reply to and forward SMS from Telegram
+- Reply to and forward incoming SMS, or send a new SMS from Telegram
 
 </td>
 <td width="50%" valign="top">
@@ -61,6 +61,8 @@ VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing 
 - Interactive buttons to control VANTA
 - Check SIM, service, and forwarding status
 - Reply to or forward incoming messages
+- Send new SMS messages directly from the bot
+- A button to star VANTA on GitHub
 - Built-in BotFather setup guidance
 
 </td>
@@ -70,13 +72,14 @@ VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing 
 
 #### Monitoring & Widgets
 
-- Live internet and Telegram connection status
-- Live forwarding status
-- Notifications when something goes wrong or recovers
+- Separate internet, Telegram, and forwarding status
+- Live connection and service monitoring
+- Notifications when connections are lost or restored
 - SIM and permission problem notifications
 - Four home-screen widgets with live status
-- Automatic startup on boot
-- Connection checks and recovery
+- Optional startup on boot
+- Connection checks and automatic recovery
+- Permission Center with individual and one-step permission setup
 
 </td>
 <td width="50%" valign="top">
@@ -89,15 +92,16 @@ VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing 
 - Android Keystore-backed AES-256-GCM encryption
 - HTTPS communication with Telegram
 - Authorized Telegram users only
-- Optional OTP protection
+- Optional OTP protection, managed inside the app only
 - Secure credential cleanup
-- Purple, Red, Blue, and Cyan themes
 
 </td>
 </tr>
 </table>
 
-When you receive an SMS, you can reply to it or forward it directly from Telegram. Your messages go straight from your phone to your own Telegram bot, without passing through another forwarding service.
+When you receive an SMS, you can reply to it or forward it directly from Telegram. You can also start a completely new SMS conversation from the bot by entering a recipient number and choosing which SIM to use when needed.
+
+Your messages go straight from your phone to your own Telegram bot, without passing through another forwarding service.
 
 VANTA also comes with home-screen widgets that show its live status, so you can check what's happening without opening the app.
 
@@ -119,7 +123,7 @@ I've spent a lot of time working on VANTA's security. Since the app handles pers
 
 Bot credentials are encrypted using Android Keystore-backed AES-256-GCM encryption. All communication with Telegram uses HTTPS, and only authorized Telegram users can interact with the bot.
 
-OTP protection is optional and turned off by default. Credentials are securely cleared when you disconnect your bot.
+OTP protection is optional and turned off by default. It can only be enabled or managed inside the Android application, never through the Telegram bot. Credentials are securely cleared when you disconnect your bot.
 
 VANTA does not provide remote shell access or remote command execution. Your SMS messages are forwarded to the Telegram destination you configure. Keep your bot token private and only authorize people you trust.
 
@@ -139,7 +143,7 @@ Install the app, open Telegram Setup, paste your token, and verify it. Generate 
 
 **3. Grant permissions**
 
-Open the Permission Center and grant the required permissions. Configure your SIMs and check the battery optimization guidance.
+On first launch, VANTA guides you to the Permission Center. You can use **Grant All Permissions** or configure permissions individually. Follow the battery optimization guidance too.
 
 **4. Turn it on**
 
@@ -186,5 +190,7 @@ Made by [Sefeshki](https://github.com/Sefeshki)
 [GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
 
 <sub>VANTA — Your device. Your connection. Your control.</sub>
+
+<sub>I put a lot of time and interest into building VANTA, and if you like what I've made, a <a href="https://github.com/Sefeshki/VANTA">GitHub star</a> would mean a lot and give me more motivation to keep creating.</sub>
 
 </div>
