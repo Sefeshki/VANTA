@@ -7,5 +7,5 @@
     <string name="widget_status_panel_name">VANTA Status Panel</string>
     <string name="widget_status_panel_description">4×2 panel for Internet, Telegram, VANTA Service, and SIM 1 / SIM 2 status.</string>
     <string name="widget_overview_name">VANTA Full Overview</string>
-    <string name="widget_overview_description">2×4 vertical telemetry overview including connectivity, service uptime, SIM carrier details, and delivery counts.</string>
+    <string name="widget_overview_description">4×2 telemetry overview including connectivity, service uptime, SIM carrier details, and delivery counts.</string>
 </resources>

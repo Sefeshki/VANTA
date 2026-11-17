@@ -101,8 +101,8 @@ import com.example.data.model.LogLevel
 import com.example.service.VantaForegroundService
 import com.example.ui.components.AnimatedHamburgerArrow
 import com.example.ui.components.EventHorizonBackground
+import com.example.ui.components.FirstLaunchPermissionDialog
 import com.example.ui.components.GlowCard
-import com.example.ui.components.OtpSuggestionDialog
 import com.example.ui.components.SpotlightTutorialOverlay
 import com.example.ui.components.StatusDot
 import com.example.ui.components.UpdateDialog
@@ -153,11 +153,13 @@ fun DashboardScreen(
 
     var showTutorial by remember { mutableStateOf(!prefs.isTutorialCompleted) }
     var showUpdateModal by remember { mutableStateOf(false) }
+    var permissionRefreshTick by remember { mutableIntStateOf(0) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                permissionRefreshTick++
                 app.networkMonitor.refresh()
                 app.simManager.refreshSims()
                 app.callMonitorManager.refreshObserverState()
@@ -668,10 +670,12 @@ fun DashboardScreen(
                         onClick = onNavigateToPermissions,
                         modifier = Modifier.testTag("dashboard_nav_permissions")
                     ) {
-                        val hasSms = ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.RECEIVE_SMS
-                        ) == PackageManager.PERMISSION_GRANTED
+                        val hasSms = remember(permissionRefreshTick) {
+                            ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.RECEIVE_SMS
+                            ) == PackageManager.PERMISSION_GRANTED
+                        }
                         Icon(
                             imageVector = Icons.Outlined.Security,
                             contentDescription = "Permissions",
@@ -766,15 +770,14 @@ fun DashboardScreen(
                 }
             )
 
-            OtpSuggestionDialog(
-                isVisible = !showTutorial && !prefs.hasSeenOtpSuggestion,
-                onEnable = {
-                    app.preferencesManager.setOtpProtectionEnabled(true)
-                    app.preferencesManager.setSeenOtpSuggestion(true)
-                    Toast.makeText(context, "Code protection enabled", Toast.LENGTH_SHORT).show()
+            FirstLaunchPermissionDialog(
+                isVisible = !showTutorial && !prefs.hasSeenPermissionSetup,
+                onContinue = {
+                    app.preferencesManager.setSeenPermissionSetup(true)
+                    onNavigateToPermissions()
                 },
                 onDismiss = {
-                    app.preferencesManager.setSeenOtpSuggestion(true)
+                    app.preferencesManager.setSeenPermissionSetup(true)
                 }
             )
 

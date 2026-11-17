@@ -1,7 +1,10 @@
 package com.example
 
+import android.Manifest
 import android.app.Application
+import android.content.pm.PackageManager
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import com.example.core.EventLogger
 import com.example.core.NetworkMonitor
 import com.example.core.PreferencesManager
@@ -124,14 +127,12 @@ class VantaApplication : Application() {
                 LogLevel.INFO
             )
         }
-        telegramBotManager.onToggleOtpProtection = { enabled ->
-            preferencesManager.setOtpProtectionEnabled(enabled)
-            VantaWidgetUpdater.updateAllWidgets(this, force = true)
-            EventLogger.log(
-                LogCategory.SECURITY,
-                "OTP Protection turned ${if (enabled) "ON" else "OFF"} via Telegram",
-                LogLevel.INFO
-            )
+        telegramBotManager.simRefreshProvider = {
+            simManager.refreshSims()
+            simManager.detectedSims.value
+        }
+        telegramBotManager.hasSendSmsPermissionProvider = {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
         }
         telegramBotManager.smsGateway = smsGateway
 
@@ -162,7 +163,7 @@ class VantaApplication : Application() {
                 preferencesManager.preferences,
                 preferencesManager.telegramConfig
             ) { running, prefs, tgConfig ->
-                Triple(prefs.isForwardingEnabled && running, prefs.simControl, tgConfig)
+                Triple(prefs.isForwardingEnabled && running, prefs, tgConfig)
             }
             val networkStateFlow = combine(
                 networkMonitor.isInternetAvailable,
@@ -178,7 +179,7 @@ class VantaApplication : Application() {
                 .distinctUntilChanged()
                 .collect { (bridge, network) ->
                     val tgConfig = bridge.third
-                    val prefs = preferencesManager.preferences.value
+                    val prefs = bridge.second
                     val isInternet = network[0] as Boolean
                     val isTgReachable = network[1] as Boolean
                     val isBotConnected = network[2] as Boolean

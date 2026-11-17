@@ -37,6 +37,13 @@ interface SmsGateway {
         slotIndex: Int
     ): Result<SmsSendResult>
 
+    suspend fun sendSmsWithSubIdCheck(
+        destination: String,
+        messageText: String,
+        slotIndex: Int,
+        expectedSubId: Int? = null
+    ): Result<SmsSendResult> = sendSms(destination, messageText, slotIndex)
+
     fun canReplyToAddress(address: String?): Boolean
 }
 
@@ -60,13 +67,31 @@ class AndroidSmsGateway(
         messageText: String,
         slotIndex: Int
     ): Result<SmsSendResult> {
+        return sendSmsInternal(destination, messageText, slotIndex, expectedSubId = null)
+    }
+
+    override suspend fun sendSmsWithSubIdCheck(
+        destination: String,
+        messageText: String,
+        slotIndex: Int,
+        expectedSubId: Int?
+    ): Result<SmsSendResult> {
+        return sendSmsInternal(destination, messageText, slotIndex, expectedSubId = expectedSubId)
+    }
+
+    private suspend fun sendSmsInternal(
+        destination: String,
+        messageText: String,
+        slotIndex: Int,
+        expectedSubId: Int?
+    ): Result<SmsSendResult> {
         if (!canReplyToAddress(destination)) {
             return Result.failure(
-                IllegalArgumentException("Invalid SMS destination '$destination'. Alphanumeric sender IDs cannot receive replies.")
+                IllegalArgumentException("Invalid SMS destination '$destination'. Alphanumeric sender IDs cannot receive messages.")
             )
         }
         if (messageText.isBlank()) {
-            return Result.failure(IllegalArgumentException("Reply message cannot be empty."))
+            return Result.failure(IllegalArgumentException("Message text cannot be empty."))
         }
 
         if (ContextCompat.checkSelfPermission(
@@ -91,6 +116,15 @@ class AndroidSmsGateway(
             return Result.failure(IllegalStateException("SIM ${slotIndex + 1} is unavailable or not ready."))
         }
 
+        if (expectedSubId != null && expectedSubId >= 0 && simInfo.subId != expectedSubId) {
+            return Result.failure(
+                IllegalStateException(
+                    "SIM ${slotIndex + 1} subscription changed before sending. Please select a SIM again."
+                )
+            )
+        }
+
+        val dialableDestination = normalizeDialableAddress(destination)
         val smsManager = resolveSmsManager(simInfo.subId)
             ?: return Result.failure(IllegalStateException("Unable to acquire SMS manager for SIM ${slotIndex + 1}."))
 
@@ -147,9 +181,9 @@ class AndroidSmsGateway(
             }
 
             if (parts.size == 1) {
-                smsManager.sendTextMessage(destination, null, parts[0], sentIntents[0], null)
+                smsManager.sendTextMessage(dialableDestination, null, parts[0], sentIntents[0], null)
             } else {
-                smsManager.sendMultipartTextMessage(destination, null, parts, sentIntents, null)
+                smsManager.sendMultipartTextMessage(dialableDestination, null, parts, sentIntents, null)
             }
 
             val sendOutcome = withTimeoutOrNull(SMS_SEND_TIMEOUT_MS) {
@@ -161,7 +195,7 @@ class AndroidSmsGateway(
                     val simLabel = simManager.formatSimDisplayLabel(slotIndex, simInfo.subId)
                     EventLogger.log(
                         LogCategory.SMS_DELIVERY,
-                        "Sent SMS reply to '$destination' via $simLabel (subId=${simInfo.subId})",
+                        "Sent SMS to '$destination' via $simLabel (subId=${simInfo.subId})",
                         LogLevel.SUCCESS
                     )
                     Result.success(
@@ -196,6 +230,18 @@ class AndroidSmsGateway(
             } catch (_: Exception) {
             }
         }
+    }
+
+    private fun normalizeDialableAddress(raw: String): String {
+        val trimmed = raw.trim()
+        val sb = StringBuilder(trimmed.length)
+        for ((idx, ch) in trimmed.withIndex()) {
+            when {
+                ch == '+' && idx == 0 -> sb.append(ch)
+                ch.isDigit() -> sb.append(ch)
+            }
+        }
+        return sb.toString().ifBlank { trimmed }
     }
 
     private fun resolveSmsManager(subId: Int): SmsManager? {

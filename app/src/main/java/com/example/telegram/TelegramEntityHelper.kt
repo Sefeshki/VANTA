@@ -20,6 +20,9 @@ object TelegramEntityHelper {
     const val NEW_MESSAGE_EMOJI_ID = "5231379851402827068"
     const val CONTEXT_EMOJI_ID = "5260535596941582167"
     const val GITHUB_EMOJI_ID = "4983325655899833037"
+    const val GITHUB_REPO_URL = "https://github.com/Sefeshki/VANTA"
+    const val GITHUB_STAR_BUTTON_LABEL = "★ Give VANTA a Star"
+    const val GITHUB_REMINDER_BUTTON_LABEL = "★ Star VANTA on GitHub"
 
     private const val SEPARATOR = "━━━━━━━━━━━━━━━━━━━━"
 
@@ -190,6 +193,59 @@ object TelegramEntityHelper {
 
     fun formatReplyPrompt(): FormattedMessage {
         return FormattedMessage("Send the message you want to reply:", emptyList())
+    }
+
+    fun formatNewMessageRecipientPrompt(errorNote: String? = null): FormattedMessage {
+        val sb = StringBuilder()
+        if (!errorNote.isNullOrBlank()) {
+            sb.append(errorNote).append("\n\n")
+        }
+        sb.append("Enter the recipient's phone number:\n\n")
+        sb.append("Example:\n")
+        sb.append("+98 921xxxxxxx")
+        return FormattedMessage(sb.toString(), emptyList())
+    }
+
+    fun formatNewMessageConfirmRecipient(recipient: String): FormattedMessage {
+        val text = "Recipient:\n$recipient\n\nIs this number correct?"
+        return FormattedMessage(text, emptyList())
+    }
+
+    fun formatNewMessageBodyPrompt(errorNote: String? = null): FormattedMessage {
+        val text = if (!errorNote.isNullOrBlank()) {
+            "$errorNote\n\nWhat would you like to send?"
+        } else {
+            "What would you like to send?"
+        }
+        return FormattedMessage(text, emptyList())
+    }
+
+    fun formatNewMessageSimPrompt(recipient: String, note: String? = null): FormattedMessage {
+        val sb = StringBuilder()
+        if (!note.isNullOrBlank()) {
+            sb.append(note).append("\n\n")
+        }
+        sb.append("Which SIM should send this message?\n\n")
+        sb.append("To: ").append(recipient)
+        return FormattedMessage(sb.toString(), emptyList())
+    }
+
+    fun formatNewMessageSentConfirmation(
+        recipient: String,
+        simSlot: Int,
+        sentTimestampMillis: Long = System.currentTimeMillis(),
+        messageText: String
+    ): FormattedMessage {
+        val timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(sentTimestampMillis))
+        val simName = "SIM ${simSlot + 1}"
+        val text = buildString {
+            append("Message sent!\n\n")
+            append("To: ").append(recipient).append(" (").append(simName).append(")\n\n")
+            append("Time: ").append(timeText).append("\n\n")
+            append("Text:\n").append(messageText).append("\n\n")
+            append("---------------------")
+        }
+        return FormattedMessage(text, emptyList())
     }
 
     fun formatForwardPrompt(
@@ -516,7 +572,9 @@ object TelegramEntityHelper {
             }
             sb.append("• SIM ").append(slot + 1).append(": ").append(state).append("\n")
         }
-        sb.append("• OTP Protection: ").append(if (isOtpProtectionEnabled) "ON" else "OFF").append("\n\n")
+        sb.append("• OTP Protection: ")
+            .append(if (isOtpProtectionEnabled) "ON" else "OFF")
+            .append(" (App only)\n\n")
         sb.append("Tap any control button below to update live settings.\n\n")
         sb.append(SEPARATOR)
         return FormattedMessage(sb.toString(), emptyList())
@@ -529,12 +587,19 @@ object TelegramEntityHelper {
             VANTA forwards incoming SMS, call logs, and call alerts to this paired Telegram chat with SIM-aware routing.
 
             Interactive Controls:
+            • Tap New Message in the menu to compose and send an SMS to any international number.
             • Tap Reply under any forwarded SMS to respond via the original receiving SIM.
             • Tap Forward under any forwarded SMS to relay it to a saved chat or Chat ID.
             • Use the inline buttons below any status message to inspect SIMs, monitor the service, or toggle forwarding controls.
+            • OTP Protection can only be configured inside the VANTA Android app.
 
             $SEPARATOR
         """.trimIndent()
+        return FormattedMessage(text, emptyList())
+    }
+
+    fun formatWeeklyGithubReminder(): FormattedMessage {
+        val text = "Enjoying VANTA? If you find the project useful, consider giving it a star on GitHub. Every star means a lot and helps the project grow. Thank you for supporting my work."
         return FormattedMessage(text, emptyList())
     }
 

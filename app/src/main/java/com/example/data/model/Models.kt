@@ -255,6 +255,13 @@ data class TelegramConfig(
     val forwardDestinations: List<ForwardDestination> = emptyList()
 )
 
+data class GithubReminderState(
+    val userId: Long,
+    val firstSeenAt: Long = 0L,
+    val lastReminderSentAt: Long = 0L,
+    val disabled: Boolean = false
+)
+
 data class BridgeStatus(
     val isForwardingActive: Boolean = false,
     val isServiceRunning: Boolean = false,
@@ -272,6 +279,7 @@ data class AppPreferences(
     val isAutoStartEnabled: Boolean = false,
     val isOtpProtectionEnabled: Boolean = false,
     val hasSeenOtpSuggestion: Boolean = false,
+    val hasSeenPermissionSetup: Boolean = false,
     val simSelectionMode: SimSelectionMode = SimSelectionMode.ALL,
     val simControl: SimControlConfig = SimControlConfig(),
     val isTutorialCompleted: Boolean = false

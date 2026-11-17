@@ -635,6 +635,7 @@ class SimControlAndReplyTest {
         val menuMsgId = 100L
         assertTrue(menuSend.text.contains("VANTA Overview"))
         val menuButtons = menuSend.keyboardRows.flatten()
+        assertTrue(menuButtons.any { it.text == "New Message" && it.callbackData == "newmsg:start" })
         assertTrue(menuButtons.any { it.callbackData == "menu:sims" })
         assertTrue(menuButtons.any { it.callbackData == "menu:service" })
         assertTrue(menuButtons.any { it.callbackData == "menu:forwarding" })
@@ -682,18 +683,28 @@ class SimControlAndReplyTest {
         assertTrue(serviceRunning)
         assertTrue(fakeApi.editedMessages.last().text.contains("Foreground Service: ACTIVE"))
 
-        // 6. Navigate Forwarding status & verify Controls OTP guard when no SIM has OTP enabled
-        prefsMgr.setSimFeatureEnabled(0, SimFeature.OTP_MESSAGES, false)
-        prefsMgr.setSimFeatureEnabled(1, SimFeature.OTP_MESSAGES, false)
+        // 6. OTP protection must NEVER be controllable via Telegram Forwarding or Controls panels or callbacks
+        botManager.handleUpdate(
+            TelegramUpdate(1051L, null, 9001L, 101L, "owner", null, "cb_fwd_panel", "menu:forwarding", menuMsgId)
+        )
+        assertFalse(
+            "Forwarding panel must not expose any OTP callback",
+            fakeApi.editedMessages.last().keyboardRows.flatten().any { it.callbackData?.contains("otp") == true }
+        )
+
         botManager.handleUpdate(
             TelegramUpdate(106L, null, 9001L, 101L, "owner", null, "cb_ctrl", "menu:controls", menuMsgId)
         )
-        val otpToggleCb = fakeApi.editedMessages.last().keyboardRows.flatten().first { it.callbackData!!.startsWith("act:otp_toggle") }.callbackData!!
-        botManager.handleUpdate(
-            TelegramUpdate(107L, null, 9001L, 101L, "owner", null, "cb_otp_locked", otpToggleCb, menuMsgId)
+        assertFalse(
+            "Controls panel must not expose any OTP callback",
+            fakeApi.editedMessages.last().keyboardRows.flatten().any { it.callbackData?.contains("otp") == true }
         )
-        assertFalse("OTP protection must stay locked when both SIMs have OTP off", prefsMgr.preferences.value.isOtpProtectionEnabled)
-        assertTrue(fakeApi.answeredCallbacks.last().second!!.contains("Enable OTP forwarding on at least one SIM"))
+        assertFalse(prefsMgr.preferences.value.isOtpProtectionEnabled)
+        botManager.handleUpdate(
+            TelegramUpdate(107L, null, 9001L, 101L, "owner", null, "cb_otp_forged", "act:otp_toggle:controls", menuMsgId)
+        )
+        assertFalse("Forged OTP callback must never toggle OTP protection", prefsMgr.preferences.value.isOtpProtectionEnabled)
+        assertTrue(fakeApi.answeredCallbacks.last().second!!.contains("only be configured inside the VANTA app"))
 
         // 7. Unknown/expired callback handled gracefully
         botManager.handleUpdate(

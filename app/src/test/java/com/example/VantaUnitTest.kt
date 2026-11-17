@@ -487,7 +487,7 @@ class VantaUnitTest {
         assertEquals(android.view.View.GONE, compactPanel.findViewById<android.view.View>(R.id.widget_panel_header).visibility)
         assertEquals("NET", compactPanel.findViewById<android.widget.TextView>(R.id.widget_panel_internet_label).text.toString())
 
-        // 4. Full Overview (2x4 portrait layout & resize adaptation)
+        // 4. Full Overview (4x2 horizontal layout & resize adaptation)
         val overviewViews = com.example.widget.VantaWidgetUpdater.buildOverviewRemoteViews(context, activeSnapshot)
             .apply(context, android.widget.FrameLayout(context))
         assertEquals("UPTIME 1h 15m", overviewViews.findViewById<android.widget.TextView>(R.id.widget_overview_uptime).text.toString())
@@ -498,10 +498,21 @@ class VantaUnitTest {
         assertEquals(android.view.View.VISIBLE, overviewViews.findViewById<android.view.View>(R.id.widget_overview_footer).visibility)
         assertEquals(android.view.View.VISIBLE, overviewViews.findViewById<android.view.View>(R.id.widget_overview_sim1_detail).visibility)
 
-        // Short & narrow 2x4 resize should gracefully hide footer/details and shorten labels without distortion
+        // Compact 4x2 at standard minimum dimensions (240dp x 104dp) keeps all metrics intact without overflow
+        val standard4x2Opts = android.os.Bundle().apply {
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 240)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 104)
+        }
+        val standard4x2Overview = com.example.widget.VantaWidgetUpdater.buildOverviewRemoteViews(context, activeSnapshot, standard4x2Opts)
+            .apply(context, android.widget.FrameLayout(context))
+        assertEquals(android.view.View.VISIBLE, standard4x2Overview.findViewById<android.view.View>(R.id.widget_overview_footer).visibility)
+        assertEquals(android.view.View.VISIBLE, standard4x2Overview.findViewById<android.view.View>(R.id.widget_overview_sim1_detail).visibility)
+        assertEquals("INTERNET", standard4x2Overview.findViewById<android.widget.TextView>(R.id.widget_overview_internet_label).text.toString())
+
+        // Compressed resize should gracefully hide footer/details and shorten labels without distortion
         val shortNarrowOverviewOpts = android.os.Bundle().apply {
-            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 110)
-            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 170)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 190)
+            putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 80)
         }
         val compactOverview = com.example.widget.VantaWidgetUpdater.buildOverviewRemoteViews(context, activeSnapshot, shortNarrowOverviewOpts)
             .apply(context, android.widget.FrameLayout(context))
@@ -509,6 +520,44 @@ class VantaUnitTest {
         assertEquals(android.view.View.GONE, compactOverview.findViewById<android.view.View>(R.id.widget_overview_sim1_detail).visibility)
         assertEquals("NET", compactOverview.findViewById<android.widget.TextView>(R.id.widget_overview_internet_label).text.toString())
         assertEquals("ON", compactOverview.findViewById<android.widget.TextView>(R.id.widget_overview_internet_value).text.toString())
+
+        // 5. Verify XML AppWidgetProviderInfo sizing enforces 4x2 (not 2x4) and compact dimensions across all 4 widgets
+        fun parseProviderXml(xmlResId: Int): Map<String, String> {
+            val parser = context.resources.getXml(xmlResId)
+            val attrs = mutableMapOf<String, String>()
+            var event = parser.eventType
+            while (event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                if (event == org.xmlpull.v1.XmlPullParser.START_TAG && parser.name == "appwidget-provider") {
+                    for (i in 0 until parser.attributeCount) {
+                        attrs[parser.getAttributeName(i)] = parser.getAttributeValue(i)
+                    }
+                }
+                event = parser.next()
+            }
+            parser.close()
+            return attrs
+        }
+
+        val overviewAttrs = parseProviderXml(R.xml.vanta_widget_overview_info)
+        assertEquals("4", overviewAttrs["targetCellWidth"])
+        assertEquals("2", overviewAttrs["targetCellHeight"])
+        assertEquals("240.0dip", overviewAttrs["minWidth"])
+        assertEquals("104.0dip", overviewAttrs["minHeight"])
+        assertEquals("190.0dip", overviewAttrs["minResizeWidth"])
+
+        val statusPanelAttrs = parseProviderXml(R.xml.vanta_widget_status_panel_info)
+        assertEquals("4", statusPanelAttrs["targetCellWidth"])
+        assertEquals("2", statusPanelAttrs["targetCellHeight"])
+        assertEquals("240.0dip", statusPanelAttrs["minWidth"])
+        assertEquals("104.0dip", statusPanelAttrs["minHeight"])
+
+        val simStatusAttrs = parseProviderXml(R.xml.vanta_widget_sim_status_info)
+        assertEquals("2", simStatusAttrs["targetCellWidth"])
+        assertEquals("2", simStatusAttrs["targetCellHeight"])
+
+        val compactAttrs = parseProviderXml(R.xml.vanta_widget_compact_info)
+        assertEquals("2", compactAttrs["targetCellWidth"])
+        assertEquals("1", compactAttrs["targetCellHeight"])
     }
 
     @Test

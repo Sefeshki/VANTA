@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Sms
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -72,7 +73,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.VantaApplication
+import com.example.core.ManualSetupTarget
 import com.example.core.PermissionHelper
+import com.example.core.PermissionSetupSummary
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
 import com.example.ui.theme.LocalVantaColors
@@ -94,55 +97,59 @@ fun PermissionCenterScreen(
 
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
+    fun refreshPermissionStates() {
+        PermissionHelper.syncGrantedPermissionsTracking(context, app.preferencesManager)
+        refreshTrigger++
+        app.simManager.refreshSims()
+        app.callMonitorManager.refreshObserverState()
+        app.serviceAlertManager.evaluatePermissions()
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                refreshTrigger++
-                app.simManager.refreshSims()
-                app.callMonitorManager.refreshObserverState()
+                refreshPermissionStates()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    fun isBatteryOptimizationIgnored(): Boolean {
-        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            powerManager.isIgnoringBatteryOptimizations(context.packageName)
-        } else true
-    }
+    val phonePermissions = remember { PermissionHelper.phonePermissionsForCurrentApi() }
+    val notificationPermissions = remember { PermissionHelper.notificationPermissionsForCurrentApi() }
 
     val smsGranted = remember(refreshTrigger) { PermissionHelper.isGranted(context, Manifest.permission.RECEIVE_SMS) }
     val sendSmsGranted = remember(refreshTrigger) { PermissionHelper.isGranted(context, Manifest.permission.SEND_SMS) }
     val callLogGranted = remember(refreshTrigger) { PermissionHelper.isGranted(context, Manifest.permission.READ_CALL_LOG) }
     val contactsGranted = remember(refreshTrigger) { PermissionHelper.isGranted(context, Manifest.permission.READ_CONTACTS) }
     val notifGranted = remember(refreshTrigger) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            PermissionHelper.isGranted(context, Manifest.permission.POST_NOTIFICATIONS)
-        } else true
+        notificationPermissions.isEmpty() || PermissionHelper.areAllGranted(context, notificationPermissions)
     }
-    val phoneStateGranted = remember(refreshTrigger) { PermissionHelper.isGranted(context, Manifest.permission.READ_PHONE_STATE) }
-    val batteryIgnored = remember(refreshTrigger) { isBatteryOptimizationIgnored() }
+    val phoneStateGranted = remember(refreshTrigger) {
+        PermissionHelper.areAllGranted(context, phonePermissions)
+    }
+    val batteryIgnored = remember(refreshTrigger) {
+        PermissionHelper.isBatteryOptimizationIgnored(context)
+    }
+    val setupSummary = remember(refreshTrigger) {
+        PermissionHelper.inspectPermissionSetupState(context, app.preferencesManager)
+    }
 
     val singlePermLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) {
-        refreshTrigger++
-        app.simManager.refreshSims()
-        app.callMonitorManager.refreshObserverState()
+        refreshPermissionStates()
     }
 
     val multiplePermLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        refreshTrigger++
-        app.simManager.refreshSims()
-        app.callMonitorManager.refreshObserverState()
+        refreshPermissionStates()
     }
 
     fun launchOrOpenSettings(permissions: List<String>) {
+        if (permissions.isEmpty()) return
         if (PermissionHelper.isAnyPermanentlyDenied(context, app.preferencesManager, permissions)) {
             PermissionHelper.openAppSettings(context)
         } else {
@@ -152,6 +159,25 @@ fun PermissionCenterScreen(
             } else {
                 multiplePermLauncher.launch(permissions.toTypedArray())
             }
+        }
+    }
+
+    fun handleGrantAllPermissions() {
+        PermissionHelper.syncGrantedPermissionsTracking(context, app.preferencesManager)
+        val currentSummary = PermissionHelper.inspectPermissionSetupState(context, app.preferencesManager)
+        if (currentSummary.isSetupComplete) {
+            refreshPermissionStates()
+            return
+        }
+        if (currentSummary.requestableRuntimePermissions.isNotEmpty()) {
+            app.preferencesManager.markPermissionsRequested(currentSummary.requestableRuntimePermissions)
+            multiplePermLauncher.launch(currentSummary.requestableRuntimePermissions.toTypedArray())
+            return
+        }
+        when (currentSummary.manualTarget) {
+            ManualSetupTarget.APP_SETTINGS -> PermissionHelper.openAppSettings(context)
+            ManualSetupTarget.BATTERY_OPTIMIZATION_SETTINGS -> PermissionHelper.openBatteryOptimizationSettings(context)
+            ManualSetupTarget.NONE -> refreshPermissionStates()
         }
     }
 
@@ -209,6 +235,14 @@ fun PermissionCenterScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
+                if (!setupSummary.isSetupComplete) {
+                    CompleteSetupCard(
+                        summary = setupSummary,
+                        onGrantAll = ::handleGrantAllPermissions
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
                 Text(
                     text = "CORE BRIDGE PERMISSIONS",
                     style = MaterialTheme.typography.labelSmall.copy(
@@ -255,13 +289,13 @@ fun PermissionCenterScreen(
                     whatItDoes = "Shows a quiet notification so Android knows VANTA is actively working.",
                     whyRequired = "Modern Android shuts down apps that try to run silently in the background.",
                     whatHappensWithout = "The bridge stops working a few minutes after you lock your phone.",
-                    isPermanentlyDenied = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    isPermanentlyDenied = notificationPermissions.isNotEmpty() &&
                         PermissionHelper.isAnyPermanentlyDenied(
-                            context, app.preferencesManager, listOf(Manifest.permission.POST_NOTIFICATIONS)
+                            context, app.preferencesManager, notificationPermissions
                         ),
                     onRequest = {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            launchOrOpenSettings(listOf(Manifest.permission.POST_NOTIFICATIONS))
+                        if (notificationPermissions.isNotEmpty()) {
+                            launchOrOpenSettings(notificationPermissions)
                         }
                     }
                 )
@@ -280,15 +314,10 @@ fun PermissionCenterScreen(
                     isPermanentlyDenied = PermissionHelper.isAnyPermanentlyDenied(
                         context,
                         app.preferencesManager,
-                        listOf(Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_PHONE_NUMBERS)
+                        phonePermissions
                     ),
                     onRequest = {
-                        launchOrOpenSettings(
-                            listOf(
-                                Manifest.permission.READ_PHONE_STATE,
-                                Manifest.permission.READ_PHONE_NUMBERS
-                            )
-                        )
+                        launchOrOpenSettings(phonePermissions)
                     }
                 )
 
@@ -373,12 +402,7 @@ fun PermissionCenterScreen(
                     whatHappensWithout = "Messages might get delayed until you turn the screen on.",
                     isPermanentlyDenied = false,
                     onRequest = {
-                        try {
-                            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                            context.startActivity(intent)
-                        } catch (_: Exception) {
-                            PermissionHelper.openAppSettings(context)
-                        }
+                        PermissionHelper.openBatteryOptimizationSettings(context)
                     }
                 )
 
@@ -403,6 +427,102 @@ fun PermissionCenterScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompleteSetupCard(
+    summary: PermissionSetupSummary,
+    onGrantAll: () -> Unit
+) {
+    val colors = LocalVantaColors.current
+
+    GlowCard(
+        isHighlighted = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("complete_setup_card")
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.10f))
+                        .border(1.dp, Color.White.copy(alpha = 0.24f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Security,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Complete Your Setup",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = "${summary.missingItemLabels.size} remaining",
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                        color = colors.warning
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Grant all the permissions VANTA needs to provide the best experience and keep its features working correctly.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary
+            )
+
+            if (summary.missingItemLabels.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Missing: ${summary.missingItemLabels.joinToString(" · ")}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textMuted,
+                    modifier = Modifier.testTag("setup_missing_items_text")
+                )
+            }
+
+            if (!summary.manualGuidanceMessage.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = summary.manualGuidanceMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.warning,
+                    modifier = Modifier.testTag("setup_manual_guidance_text")
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = onGrantAll,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black
+                ),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .testTag("grant_all_permissions_btn")
+            ) {
+                Text(
+                    text = "Grant All Permissions",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                )
             }
         }
     }

@@ -79,7 +79,6 @@ object TelegramMenuHelper {
         val keyboard = buildPanelKeyboard(
             panel = panel,
             isForwardingEnabled = prefs.isForwardingEnabled,
-            isOtpProtectionEnabled = prefs.isOtpProtectionEnabled,
             sims = sims,
             simControl = prefs.simControl
         )
@@ -89,12 +88,14 @@ object TelegramMenuHelper {
     fun buildPanelKeyboard(
         panel: BotMenuPanel,
         isForwardingEnabled: Boolean,
-        isOtpProtectionEnabled: Boolean,
         sims: List<SimCardInfo>,
         simControl: com.example.data.model.SimControlConfig
     ): List<List<InlineButton>> {
         return when (panel) {
             BotMenuPanel.OVERVIEW -> listOf(
+                listOf(
+                    InlineButton(text = "New Message", callbackData = "newmsg:start")
+                ),
                 listOf(
                     InlineButton(text = "📊 Overview", callbackData = "menu:overview"),
                     InlineButton(text = "📶 SIM Info", callbackData = "menu:sims")
@@ -109,6 +110,12 @@ object TelegramMenuHelper {
                 ),
                 listOf(
                     InlineButton(text = "🔄 Refresh", callbackData = "menu:refresh:overview")
+                ),
+                listOf(
+                    InlineButton(
+                        text = TelegramEntityHelper.GITHUB_STAR_BUTTON_LABEL,
+                        url = TelegramEntityHelper.GITHUB_REPO_URL
+                    )
                 )
             )
 
@@ -144,10 +151,6 @@ object TelegramMenuHelper {
                     InlineButton(
                         text = if (isForwardingEnabled) "⏸ Pause Bridge" else "▶️ Enable Bridge",
                         callbackData = "act:fwd_toggle:forwarding"
-                    ),
-                    InlineButton(
-                        text = if (isOtpProtectionEnabled) "🛡️ OTP Shield: ON" else "🛡️ OTP Shield: OFF",
-                        callbackData = "act:otp_toggle:forwarding"
                     )
                 ),
                 listOf(
@@ -171,14 +174,6 @@ object TelegramMenuHelper {
                 }
                 add(
                     listOf(
-                        InlineButton(
-                            text = if (isOtpProtectionEnabled) "🛡️ OTP Protection: ON" else "🛡️ OTP Protection: OFF",
-                            callbackData = "act:otp_toggle:controls"
-                        )
-                    )
-                )
-                add(
-                    listOf(
                         InlineButton(text = "📶 SIM Info", callbackData = "menu:sims"),
                         InlineButton(text = "⬅️ Overview", callbackData = "menu:overview")
                     )
@@ -187,11 +182,20 @@ object TelegramMenuHelper {
 
             BotMenuPanel.HELP -> listOf(
                 listOf(
+                    InlineButton(text = "New Message", callbackData = "newmsg:start")
+                ),
+                listOf(
                     InlineButton(text = "📶 SIM Info", callbackData = "menu:sims"),
                     InlineButton(text = "🎛️ Controls", callbackData = "menu:controls")
                 ),
                 listOf(
                     InlineButton(text = "⬅️ Overview", callbackData = "menu:overview")
+                ),
+                listOf(
+                    InlineButton(
+                        text = TelegramEntityHelper.GITHUB_STAR_BUTTON_LABEL,
+                        url = TelegramEntityHelper.GITHUB_REPO_URL
+                    )
                 )
             )
         }

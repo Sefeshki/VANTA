@@ -5,10 +5,10 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:paddingLeft="14dp"
-    android:paddingTop="11dp"
-    android:paddingRight="14dp"
-    android:paddingBottom="11dp">
+    android:paddingLeft="11dp"
+    android:paddingTop="8dp"
+    android:paddingRight="11dp"
+    android:paddingBottom="8dp">
 
     <!-- Header -->
     <LinearLayout
@@ -23,11 +23,11 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:fontFamily="monospace"
-            android:letterSpacing="0.16"
+            android:letterSpacing="0.14"
             android:maxLines="1"
             android:text="VANTA"
             android:textColor="#FFFFFFFF"
-            android:textSize="11sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -38,15 +38,15 @@
             android:maxLines="1"
             android:text="STATUS PANEL"
             android:textColor="#8A8A93"
-            android:textSize="9.5sp" />
+            android:textSize="8.5sp" />
     </LinearLayout>
 
     <ImageView
         android:id="@+id/widget_panel_divider_top"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="7dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="5dp"
         android:background="#1FFFFFFF"
         android:contentDescription="@null" />
 
@@ -72,8 +72,8 @@
 
                 <ImageView
                     android:id="@+id/widget_panel_internet_dot"
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
                     android:contentDescription="@null"
                     android:src="@drawable/widget_dot_inactive" />
 
@@ -86,7 +86,7 @@
                     android:maxLines="1"
                     android:text="OFFLINE"
                     android:textColor="#71717A"
-                    android:textSize="10.5sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -94,12 +94,12 @@
                 android:id="@+id/widget_panel_internet_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:fontFamily="monospace"
                 android:maxLines="1"
                 android:text="INTERNET"
                 android:textColor="#8A8A93"
-                android:textSize="8.5sp" />
+                android:textSize="8sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -117,8 +117,8 @@
 
                 <ImageView
                     android:id="@+id/widget_panel_telegram_dot"
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
                     android:contentDescription="@null"
                     android:src="@drawable/widget_dot_inactive" />
 
@@ -131,7 +131,7 @@
                     android:maxLines="1"
                     android:text="OFFLINE"
                     android:textColor="#71717A"
-                    android:textSize="10.5sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -139,12 +139,12 @@
                 android:id="@+id/widget_panel_telegram_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:fontFamily="monospace"
                 android:maxLines="1"
                 android:text="TELEGRAM"
                 android:textColor="#8A8A93"
-                android:textSize="8.5sp" />
+                android:textSize="8sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -162,8 +162,8 @@
 
                 <ImageView
                     android:id="@+id/widget_panel_service_dot"
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
                     android:contentDescription="@null"
                     android:src="@drawable/widget_dot_inactive" />
 
@@ -176,7 +176,7 @@
                     android:maxLines="1"
                     android:text="OFF"
                     android:textColor="#71717A"
-                    android:textSize="10.5sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -184,12 +184,12 @@
                 android:id="@+id/widget_panel_service_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:fontFamily="monospace"
                 android:maxLines="1"
                 android:text="SERVICE"
                 android:textColor="#8A8A93"
-                android:textSize="8.5sp" />
+                android:textSize="8sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -197,8 +197,8 @@
         android:id="@+id/widget_panel_divider_mid"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
         android:background="#1FFFFFFF"
         android:contentDescription="@null" />
 
@@ -218,10 +218,10 @@
             android:background="@drawable/widget_card_inner"
             android:gravity="center_vertical"
             android:orientation="vertical"
-            android:paddingLeft="9dp"
-            android:paddingTop="5dp"
-            android:paddingRight="9dp"
-            android:paddingBottom="5dp">
+            android:paddingLeft="8dp"
+            android:paddingTop="4dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -231,8 +231,8 @@
 
                 <ImageView
                     android:id="@+id/widget_panel_sim1_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
+                    android:layout_width="5.5dp"
+                    android:layout_height="5.5dp"
                     android:contentDescription="@null"
                     android:src="@drawable/widget_dot_inactive" />
 
@@ -240,14 +240,14 @@
                     android:id="@+id/widget_panel_sim1_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="5dp"
+                    android:layout_marginLeft="4dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:maxLines="1"
                     android:text="SIM 1"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -255,17 +255,17 @@
                 android:id="@+id/widget_panel_sim1_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:fontFamily="monospace"
                 android:maxLines="1"
                 android:text="Unavailable"
                 android:textColor="#8A8A93"
-                android:textSize="9sp" />
+                android:textSize="8.5sp" />
         </LinearLayout>
 
         <ImageView
-            android:layout_width="8dp"
+            android:layout_width="6dp"
             android:layout_height="match_parent"
             android:contentDescription="@null" />
 
@@ -276,10 +276,10 @@
             android:background="@drawable/widget_card_inner"
             android:gravity="center_vertical"
             android:orientation="vertical"
-            android:paddingLeft="9dp"
-            android:paddingTop="5dp"
-            android:paddingRight="9dp"
-            android:paddingBottom="5dp">
+            android:paddingLeft="8dp"
+            android:paddingTop="4dp"
+            android:paddingRight="8dp"
+            android:paddingBottom="4dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -289,8 +289,8 @@
 
                 <ImageView
                     android:id="@+id/widget_panel_sim2_dot"
-                    android:layout_width="6dp"
-                    android:layout_height="6dp"
+                    android:layout_width="5.5dp"
+                    android:layout_height="5.5dp"
                     android:contentDescription="@null"
                     android:src="@drawable/widget_dot_inactive" />
 
@@ -298,14 +298,14 @@
                     android:id="@+id/widget_panel_sim2_title"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="5dp"
+                    android:layout_marginLeft="4dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="monospace"
                     android:maxLines="1"
                     android:text="SIM 2"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="10sp"
+                    android:textSize="9.5sp"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -313,13 +313,13 @@
                 android:id="@+id/widget_panel_sim2_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:fontFamily="monospace"
                 android:maxLines="1"
                 android:text="Unavailable"
                 android:textColor="#8A8A93"
-                android:textSize="9sp" />
+                android:textSize="8.5sp" />
         </LinearLayout>
     </LinearLayout>
 

@@ -255,9 +255,10 @@ object VantaWidgetUpdater {
         options: Bundle = Bundle.EMPTY
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_vanta_sim_status)
-        val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
-        val hideHeader = minHeightDp in 1 until 92
+        val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 104)
+        val hideHeader = minHeightDp in 1 until 86
         views.setViewVisibility(R.id.widget_sim_header, if (hideHeader) View.GONE else View.VISIBLE)
+        views.setViewVisibility(R.id.widget_sim_divider, if (hideHeader) View.GONE else View.VISIBLE)
 
         val sim1 = summarizeSimSlot(0, snapshot)
         val sim2 = summarizeSimSlot(1, snapshot)
@@ -313,10 +314,10 @@ object VantaWidgetUpdater {
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_vanta_status_panel)
         val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 250)
-        val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
+        val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 104)
 
         val isNarrow = minWidthDp in 1 until 215
-        val isShort = minHeightDp in 1 until 88
+        val isShort = minHeightDp in 1 until 86
 
         views.setViewVisibility(R.id.widget_panel_header, if (isShort) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_panel_divider_top, if (isShort) View.GONE else View.VISIBLE)
@@ -415,11 +416,11 @@ object VantaWidgetUpdater {
         options: Bundle = Bundle.EMPTY
     ): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_vanta_overview)
-        val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 150)
-        val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 250)
-        val isCompactHeight = minHeightDp in 1 until 215
-        val isVeryShortHeight = minHeightDp in 1 until 180
-        val isNarrowWidth = minWidthDp in 1 until 125
+        val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 260)
+        val minHeightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110)
+        val isCompactHeight = minHeightDp in 1 until 98
+        val isVeryShortHeight = minHeightDp in 1 until 84
+        val isNarrowWidth = minWidthDp in 1 until 230
 
         views.setTextViewText(
             R.id.widget_overview_uptime,

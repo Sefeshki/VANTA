@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.example.data.model.AppPreferences
 import com.example.data.model.ForwardDestination
+import com.example.data.model.GithubReminderState
 import com.example.data.model.SimControlConfig
 import com.example.data.model.SimFeature
 import com.example.data.model.SimFeatureSettings
@@ -67,6 +68,7 @@ class PreferencesManager(context: Context) {
             isAutoStartEnabled = prefs.getBoolean(KEY_AUTO_START_ENABLED, false),
             isOtpProtectionEnabled = globalOtpProtection,
             hasSeenOtpSuggestion = prefs.getBoolean(KEY_SEEN_OTP_SUGGESTION, false),
+            hasSeenPermissionSetup = prefs.getBoolean(KEY_SEEN_PERMISSION_SETUP, false),
             simSelectionMode = derivedSimMode,
             simControl = simControl,
             isTutorialCompleted = prefs.getBoolean(KEY_TUTORIAL_COMPLETED, false)
@@ -283,6 +285,11 @@ class PreferencesManager(context: Context) {
         _preferences.value = _preferences.value.copy(hasSeenOtpSuggestion = seen)
     }
 
+    fun setSeenPermissionSetup(seen: Boolean) {
+        prefs.edit().putBoolean(KEY_SEEN_PERMISSION_SETUP, seen).apply()
+        _preferences.value = _preferences.value.copy(hasSeenPermissionSetup = seen)
+    }
+
     fun getLastDeliveryTime(): Long = prefs.getLong(KEY_LAST_DELIVERY, 0L)
 
     fun recordDeliverySuccess() {
@@ -452,6 +459,14 @@ class PreferencesManager(context: Context) {
         }
     }
 
+    fun clearPermissionsRequested(permissions: List<String>) {
+        if (permissions.isEmpty()) return
+        prefs.edit().apply {
+            permissions.forEach { remove(KEY_PERM_ASKED_PREFIX + it) }
+            apply()
+        }
+    }
+
     fun wasPermissionRequested(permission: String): Boolean {
         return prefs.getBoolean(KEY_PERM_ASKED_PREFIX + permission, false)
     }
@@ -502,6 +517,125 @@ class PreferencesManager(context: Context) {
         prefs.edit().putBoolean("${KEY_ALERT_SIM_PREFIX}$slotIndex", active).apply()
     }
 
+    // --- GitHub Star Weekly Reminder State (per-user, persistent) ---
+
+    @Synchronized
+    fun getGithubReminderState(userId: Long): GithubReminderState? {
+        return loadGithubReminderStates()[userId]
+    }
+
+    @Synchronized
+    fun recordBotInteractionIfFirstSeen(userId: Long, nowMillis: Long = System.currentTimeMillis()): GithubReminderState {
+        val map = loadGithubReminderStates().toMutableMap()
+        val existing = map[userId]
+        val updated = when {
+            existing == null -> GithubReminderState(
+                userId = userId,
+                firstSeenAt = nowMillis,
+                lastReminderSentAt = 0L,
+                disabled = false
+            )
+            existing.firstSeenAt <= 0L -> existing.copy(firstSeenAt = nowMillis)
+            else -> return existing
+        }
+        map[userId] = updated
+        saveGithubReminderStates(map)
+        return updated
+    }
+
+    @Synchronized
+    fun claimWeeklyGithubReminderIfEligible(
+        userId: Long,
+        nowMillis: Long = System.currentTimeMillis(),
+        intervalMillis: Long = WEEKLY_GITHUB_REMINDER_INTERVAL_MS
+    ): Boolean {
+        val map = loadGithubReminderStates().toMutableMap()
+        val current = map[userId]
+        if (current == null) {
+            map[userId] = GithubReminderState(
+                userId = userId,
+                firstSeenAt = nowMillis,
+                lastReminderSentAt = 0L,
+                disabled = false
+            )
+            saveGithubReminderStates(map)
+            return false
+        }
+        if (current.firstSeenAt <= 0L) {
+            map[userId] = current.copy(firstSeenAt = nowMillis)
+            saveGithubReminderStates(map)
+            return false
+        }
+        if (current.disabled) return false
+
+        val anchor = if (current.lastReminderSentAt > 0L) current.lastReminderSentAt else current.firstSeenAt
+        if (nowMillis - anchor < intervalMillis) return false
+
+        map[userId] = current.copy(lastReminderSentAt = nowMillis)
+        saveGithubReminderStates(map)
+        return true
+    }
+
+    @Synchronized
+    fun setGithubReminderDisabled(
+        userId: Long,
+        disabled: Boolean,
+        nowMillis: Long = System.currentTimeMillis()
+    ) {
+        val map = loadGithubReminderStates().toMutableMap()
+        val existing = map[userId]
+        val updated = if (existing != null) {
+            existing.copy(disabled = disabled)
+        } else {
+            GithubReminderState(
+                userId = userId,
+                firstSeenAt = nowMillis,
+                lastReminderSentAt = 0L,
+                disabled = disabled
+            )
+        }
+        map[userId] = updated
+        saveGithubReminderStates(map)
+    }
+
+    private fun loadGithubReminderStates(): Map<Long, GithubReminderState> {
+        val raw = prefs.getString(KEY_GITHUB_REMINDER_STATES, null) ?: return emptyMap()
+        return try {
+            val array = JSONArray(raw)
+            val result = LinkedHashMap<Long, GithubReminderState>(array.length())
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+                val uid = obj.optLong("uid", 0L)
+                if (uid != 0L) {
+                    result[uid] = GithubReminderState(
+                        userId = uid,
+                        firstSeenAt = obj.optLong("first", 0L),
+                        lastReminderSentAt = obj.optLong("last", 0L),
+                        disabled = obj.optBoolean("disabled", false)
+                    )
+                }
+            }
+            result
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun saveGithubReminderStates(map: Map<Long, GithubReminderState>) {
+        val array = JSONArray()
+        for (state in map.values) {
+            array.put(
+                JSONObject().apply {
+                    put("uid", state.userId)
+                    put("first", state.firstSeenAt)
+                    put("last", state.lastReminderSentAt)
+                    put("disabled", state.disabled)
+                }
+            )
+        }
+        prefs.edit().putString(KEY_GITHUB_REMINDER_STATES, array.toString()).apply()
+    }
+
     private fun simKey(slotIndex: Int, suffix: String): String = "sim${slotIndex}_$suffix"
 
     companion object {
@@ -516,6 +650,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_AUTO_START_ENABLED = "auto_start_enabled"
         private const val KEY_OTP_PROTECTION = "otp_protection"
         private const val KEY_SEEN_OTP_SUGGESTION = "seen_otp_suggestion"
+        private const val KEY_SEEN_PERMISSION_SETUP = "seen_permission_setup"
         private const val KEY_SIM_SELECTION = "sim_selection"
         private const val KEY_SIM_CONTROL_MIGRATED = "sim_control_migrated_v2"
         private const val KEY_TUTORIAL_COMPLETED = "tutorial_completed"
@@ -533,7 +668,9 @@ class PreferencesManager(context: Context) {
         private const val KEY_ALERT_TELEGRAM = "alert_telegram_active"
         private const val KEY_ALERT_FORWARDING = "alert_forwarding_active"
         private const val KEY_ALERT_SIM_PREFIX = "alert_sim_"
+        private const val KEY_GITHUB_REMINDER_STATES = "gh_reminder_states"
         private const val MAX_REPLY_CONTEXTS = 60
+        const val WEEKLY_GITHUB_REMINDER_INTERVAL_MS = 7L * 24L * 60L * 60L * 1000L
 
         private const val SUFFIX_MASTER = "master"
         private const val SUFFIX_SMS_FWD = "sms_fwd"

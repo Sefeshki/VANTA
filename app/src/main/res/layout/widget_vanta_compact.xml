@@ -6,10 +6,10 @@
     android:background="@drawable/widget_background"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingLeft="14dp"
-    android:paddingTop="8dp"
-    android:paddingRight="14dp"
-    android:paddingBottom="8dp">
+    android:paddingLeft="10dp"
+    android:paddingTop="6dp"
+    android:paddingRight="10dp"
+    android:paddingBottom="6dp">
 
     <LinearLayout
         android:layout_width="0dp"
@@ -22,11 +22,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
-            android:letterSpacing="0.16"
+            android:letterSpacing="0.12"
             android:maxLines="1"
             android:text="VANTA"
             android:textColor="#FFFFFFFF"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <TextView
@@ -38,7 +38,7 @@
             android:maxLines="1"
             android:text="BRIDGE"
             android:textColor="#8A8A93"
-            android:textSize="9sp" />
+            android:textSize="8.5sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -49,8 +49,8 @@
 
         <ImageView
             android:id="@+id/widget_compact_internet_dot"
-            android:layout_width="7dp"
-            android:layout_height="7dp"
+            android:layout_width="6dp"
+            android:layout_height="6dp"
             android:contentDescription="@null"
             android:src="@drawable/widget_dot_inactive" />
 
@@ -58,38 +58,38 @@
             android:id="@+id/widget_compact_internet_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="5dp"
+            android:layout_marginLeft="4dp"
             android:fontFamily="monospace"
             android:maxLines="1"
             android:text="NET"
             android:textColor="#A1A1AA"
-            android:textSize="10sp"
+            android:textSize="9.5sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_compact_internet_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="4dp"
+            android:layout_marginLeft="3dp"
             android:fontFamily="monospace"
             android:maxLines="1"
             android:text="OFF"
             android:textColor="#71717A"
-            android:textSize="10sp"
+            android:textSize="9.5sp"
             android:textStyle="bold" />
 
         <ImageView
             android:layout_width="1dp"
-            android:layout_height="14dp"
-            android:layout_marginLeft="9dp"
-            android:layout_marginRight="9dp"
+            android:layout_height="12dp"
+            android:layout_marginLeft="6dp"
+            android:layout_marginRight="6dp"
             android:background="#26FFFFFF"
             android:contentDescription="@null" />
 
         <ImageView
             android:id="@+id/widget_compact_telegram_dot"
-            android:layout_width="7dp"
-            android:layout_height="7dp"
+            android:layout_width="6dp"
+            android:layout_height="6dp"
             android:contentDescription="@null"
             android:src="@drawable/widget_dot_inactive" />
 
@@ -97,24 +97,24 @@
             android:id="@+id/widget_compact_telegram_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="5dp"
+            android:layout_marginLeft="4dp"
             android:fontFamily="monospace"
             android:maxLines="1"
             android:text="TG"
             android:textColor="#A1A1AA"
-            android:textSize="10sp"
+            android:textSize="9.5sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_compact_telegram_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="4dp"
+            android:layout_marginLeft="3dp"
             android:fontFamily="monospace"
             android:maxLines="1"
             android:text="OFF"
             android:textColor="#71717A"
-            android:textSize="10sp"
+            android:textSize="9.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 
