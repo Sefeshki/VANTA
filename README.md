@@ -1,5 +1,4 @@
-
-<div align="center">
+ <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
@@ -35,7 +34,12 @@ I've also put a lot of work into making VANTA run well on older and newer Androi
 VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing its features, fixing problems, and working on the details. Security has been a major priority throughout development, and I've done my best to make the application as secure as possible.
 
 <div align="center">
-  <img src="public/assets/images/vanta-showcase.png" alt="VANTA App Showcase" width="100%" />
+  <img
+    src="public/assets/images/vanta-showcase.png"
+    alt="VANTA App Showcase"
+    width="100%"
+    style="border-radius: 18px;"
+  />
 </div>
 
 ---
@@ -43,7 +47,12 @@ VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing 
 ### Features
 
 <p align="center">
-  <img src="public/assets/images/VANTA_FEATURES_INFOGRAPHIC_3to1.png" width="100%" alt="VANTA Features Infographic" />
+  <img
+    src="public/assets/images/VANTA_FEATURES_INFOGRAPHIC_3to1.png"
+    alt="VANTA Features"
+    width="100%"
+    style="border-radius: 18px;"
+  />
 </p>
 
 When you receive an SMS, you can reply to it or forward it directly from Telegram. You can also start a completely new SMS conversation from the bot by entering a recipient number and choosing which SIM to use when needed.
@@ -66,33 +75,43 @@ When a connection drops, VANTA attempts to restore it automatically.
 
 I've spent a lot of time working on VANTA's security. Since the app handles personal messages and Telegram bot credentials, this was never something I wanted to overlook.
 
-<p align="center">
-  <img src="public/assets/images/security_and_technology.png" width="100%" alt="VANTA Security and Technology" />
-</p>
+<div align="center">
+  <img
+    src="public/assets/images/security.png"
+    alt="VANTA Security and Technology"
+    width="100%"
+    style="border-radius: 18px;"
+  />
+</div>
 
 ---
 
 ### Getting started
 
-<p align="center">
-  <img src="public/assets/images/getting_started.png" width="100%" alt="VANTA Setup Guide" />
-</p>
+<div align="center">
+  <img
+    src="public/assets/images/getting_started.png"
+    alt="Getting Started with VANTA"
+    width="100%"
+    style="border-radius: 18px;"
+  />
+</div>
 
 **1. Create your bot**
 
-Open [@BotFather](https://t.me/BotFather), send `/newbot`, and follow the instructions. Keep your API token safe.
+Open [@BotFather](https://t.me/BotFather), send `/newbot`, choose a name and username, and copy your API token.
 
 **2. Connect VANTA**
 
-Paste your token into Telegram Setup, verify it, and pair your account using:
+Install the app, paste your token into Telegram Setup, verify it, and pair your account using the generated code:
 
 `/start YOUR_CODE`
 
 **3. Grant permissions**
 
-Use **Grant All Permissions** in the Permission Center, or grant permissions individually. Follow the battery optimization guidance.
+Use **Grant All Permissions** in the Permission Center, or configure permissions individually. Follow the battery optimization guidance too.
 
-**4. Start forwarding**
+**4. Turn it on**
 
 Return to the Dashboard and enable forwarding.
 
