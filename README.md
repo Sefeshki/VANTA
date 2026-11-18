@@ -36,9 +36,11 @@ Got an old Android phone? Give it a job.
 
 VANTA turns it into your personal SMS gateway. It runs directly on your phone, forwarding incoming messages to your own Telegram bot without requiring a separate forwarding server or subscription service.
 
-It supports dual-SIM devices, with independent controls for each SIM. It is designed to work across a range of Android devices, including older hardware.
+It supports dual-SIM devices, with independent controls for each SIM. VANTA targets Android 7.0 and newer, although available functionality can vary depending on the device and Android version.
 
-**VANTA is a hands-on Android development project that I have built, tested, debugged, and continuously refined.** My work goes beyond the interface: it includes SMS and telephony integration, SIM management, Telegram API communication, background execution, connectivity monitoring, and message delivery handling. Each of these parts has required implementation work, testing, troubleshooting, and iteration.
+**VANTA is a hands-on Android development project that I have built, tested, debugged, and continuously refined.** My work goes beyond the interface. I've worked on the complete process behind the application: Android SMS handling, telephony integration, subscription-aware SIM management, Telegram API communication, background execution, connectivity monitoring, and message delivery handling.
+
+The project has involved bringing these different Android systems together and making them work as one application.
 
 ---
 
@@ -57,7 +59,15 @@ VANTA supports more than simply forwarding incoming messages.
 
 You can reply to received SMS messages directly through Telegram, forward messages, or start completely new SMS conversations by entering a recipient number. When needed, you can choose which SIM sends the message.
 
-Messages are sent from your phone to your own Telegram bot through the Telegram Bot API, without an additional forwarding service.
+Other features include:
+
+- Independent forwarding and feature controls for each SIM.
+- OTP and verification-message detection with configurable protection.
+- Optional call-log forwarding and incoming-call notifications.
+- Telegram bot pairing and authorized-chat management.
+- Automatic connection monitoring and message delivery retries.
+
+Messages are sent directly from your phone to your configured Telegram bot through the Telegram Bot API.
 
 ---
 
@@ -65,17 +75,19 @@ Messages are sent from your phone to your own Telegram bot through the Telegram 
 
 VANTA runs on the Android device that receives the messages.
 
-When an SMS arrives, Android delivers the event to VANTA. The app processes the message and communicates with Telegram through the official Telegram Bot API.
+When an SMS arrives, Android delivers an SMS broadcast to VANTA. The app processes the message, identifies its SIM information, applies the relevant forwarding settings, and passes it to the delivery system.
 
-There is no separate VANTA forwarding server involved. The phone handles the forwarding process itself.
+The delivery system handles communication with Telegram through the official Bot API.
 
 VANTA also monitors different parts of its operating state separately:
 
-- **Internet connectivity:** whether the device has a network connection.
-- **Telegram connectivity:** whether the Telegram API can be reached.
-- **Forwarding service:** whether VANTA's forwarding functionality is active.
+- **Internet connectivity:** Android's network callbacks track network availability.
+- **Telegram reachability:** VANTA checks whether a TCP connection to Telegram's API endpoint can be established.
+- **Forwarding service:** The app tracks whether its background forwarding service is active.
 
 When connectivity is interrupted, VANTA attempts to recover automatically.
+
+There is no separate VANTA forwarding server involved. The phone handles the forwarding process itself.
 
 ---
 
@@ -83,21 +95,57 @@ When connectivity is interrupted, VANTA attempts to recover automatically.
 
 VANTA is built with Kotlin, Jetpack Compose, and native Android APIs.
 
-Its implementation is organized into components responsible for different parts of the application:
+The application is divided into dedicated components, each responsible for a different part of the system.
 
-| Component | Responsibility |
+| Component | Implementation |
 |---|---|
-| SMS processing | Receiving and processing incoming SMS events |
-| SIM management | Detecting SIMs and managing individual SIM settings |
-| Telegram integration | Bot communication through the Telegram Bot API |
-| Background service | Maintaining the forwarding service |
-| Network monitoring | Tracking connectivity and Telegram availability |
-| Delivery queue | Managing message delivery operations |
-| Telephony integration | Handling outgoing SMS and call-related functionality |
+| SMS reception | Android `BroadcastReceiver` and SMS processing |
+| Message processing | Multipart SMS reconstruction, SIM identification, and OTP detection |
+| SIM management | Android `SubscriptionManager`, system observers, and `StateFlow` |
+| Telegram integration | Kotlin API interface and OkHttp networking |
+| Background execution | Android foreground service and notification controls |
+| Network monitoring | `ConnectivityManager`, network callbacks, and endpoint probes |
+| Message delivery | Coroutine worker, synchronized queue operations, and retry handling |
+| Call monitoring | Android phone-state broadcasts and call-log observation |
 
-The project brings together Android permissions, telephony APIs, background execution, network handling, message processing, and external API integration.
+**Message processing**
 
-These systems have to work together reliably, particularly on devices with multiple SIM cards and different Android versions.
+The `SmsReceiver` handles Android's incoming SMS broadcast and delegates processing to `SmsProcessor`.
+
+The processor reconstructs multipart messages, extracts sender and timestamp information, resolves SIM routing information, and identifies OTP-like messages. It then applies global and per-SIM forwarding restrictions before a message enters the delivery queue.
+
+**SIM management**
+
+`SimManager` uses Android telephony and subscription APIs to detect active SIM subscriptions. It also observes subscription changes and SIM state broadcasts so that SIM information can be refreshed when the device configuration changes.
+
+Detected SIM information is exposed through Kotlin `StateFlow`.
+
+**Message delivery**
+
+`DeliveryQueueManager` uses a coroutine worker to process pending messages. Queue access is coordinated with a `Mutex`, while SHA-256 fingerprints are used to identify duplicate messages and prevent repeated forwarding.
+
+Failed deliveries can be attempted again up to five times, using increasing retry delays capped at 30 seconds.
+
+The current delivery queue is held in memory rather than persisted across process restarts.
+
+**Network and background service**
+
+`NetworkMonitor` tracks network availability through Android connectivity callbacks and performs periodic TCP reachability checks against `api.telegram.org` on port 443.
+
+`VantaForegroundService` manages foreground execution, service notifications, pause and resume actions, and the application's background service state.
+
+These components work together to handle the Android side of the bridge without relying on a separate VANTA server.
+
+**Explore the implementation**
+
+- [SMS Receiver](app/src/main/java/com/example/sms/SmsReceiver.kt)
+- [SMS Processor](app/src/main/java/com/example/sms/SmsProcessor.kt)
+- [SIM Manager](app/src/main/java/com/example/telephony/SimManager.kt)
+- [Delivery Queue Manager](app/src/main/java/com/example/data/queue/DeliveryQueueManager.kt)
+- [Telegram API Client](app/src/main/java/com/example/telegram/TelegramApiClient.kt)
+- [Network Monitor](app/src/main/java/com/example/core/NetworkMonitor.kt)
+- [Foreground Service](app/src/main/java/com/example/service/VantaForegroundService.kt)
+- [Call Monitor Manager](app/src/main/java/com/example/telephony/CallMonitorManager.kt)
 
 ---
 
@@ -114,9 +162,11 @@ These systems have to work together reliably, particularly on devices with multi
 
 Security is an important part of VANTA because the application handles personal messages and Telegram bot credentials.
 
-VANTA communicates directly with Telegram through its official Bot API rather than routing messages through a separate forwarding server.
+The Telegram bot token is an authentication credential and should never be shared publicly or included in bug reports.
 
-The Telegram bot token is used to authenticate API requests. It should be treated as a secret credential and must never be shared publicly or included in bug reports.
+VANTA encrypts the stored token before saving it in app-private preferences. The implementation can be inspected in [SecurityManager.kt](app/src/main/java/com/example/core/SecurityManager.kt) and [PreferencesManager.kt](app/src/main/java/com/example/core/PreferencesManager.kt).
+
+VANTA communicates directly with Telegram through its official Bot API rather than routing messages through a separate forwarding server.
 
 Keep in mind that enabling forwarding means the selected SMS content is transmitted to the Telegram chat associated with your bot. Only enable forwarding for messages you are comfortable sending there.
 
