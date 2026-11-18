@@ -31,7 +31,7 @@ class VantaForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        acquireWakeLock()
+        syncWakeLockFromPreferences()
         EventLogger.log(LogCategory.SERVICE, "VANTA Foreground Service created", LogLevel.INFO)
     }
 
@@ -48,6 +48,7 @@ class VantaForegroundService : Service() {
                 app?.callMonitorManager?.stopMonitoring()
                 app?.setServiceRunning(false)
                 VantaWidgetUpdater.updateAllWidgets(this, force = true)
+                releaseWakeLock()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -59,6 +60,7 @@ class VantaForegroundService : Service() {
                 app?.preferencesManager?.setForwardingEnabled(false)
                 app?.preferencesManager?.setServiceExpectedRunning(false)
                 app?.callMonitorManager?.stopMonitoring()
+                releaseWakeLock()
                 updateNotification()
                 VantaWidgetUpdater.updateAllWidgets(this)
                 return START_STICKY
@@ -73,13 +75,19 @@ class VantaForegroundService : Service() {
                 app?.callMonitorManager?.startMonitoring()
                 app?.serviceAlertManager?.onServiceStarted()
                 app?.serviceAlertManager?.evaluatePermissions()
+                syncWakeLockFromPreferences()
                 updateNotification()
                 VantaWidgetUpdater.updateAllWidgets(this)
+                return START_STICKY
+            }
+            ACTION_SYNC_WAKE_LOCK -> {
+                syncWakeLockFromPreferences()
                 return START_STICKY
             }
             else -> {
                 isPaused = false
                 stoppedByUserOrPause = false
+                syncWakeLockFromPreferences()
                 startInForeground()
             }
         }
@@ -205,15 +213,37 @@ class VantaForegroundService : Service() {
         }
     }
 
+    private fun syncWakeLockFromPreferences() {
+        val app = applicationContext as? VantaApplication
+        val stayAlive = app?.preferencesManager?.preferences?.value?.isStayAliveEnabled ?: true
+        if (stayAlive && !isPaused) {
+            acquireWakeLock()
+        } else {
+            releaseWakeLock()
+        }
+    }
+
     @SuppressLint("WakelockTimeout")
     private fun acquireWakeLock() {
         try {
+            if (wakeLock?.isHeld == true) return
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK,
-                "VANTA:ForegroundServiceWakeLock"
-            ).apply {
-                acquire()
+            if (wakeLock == null) {
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "VANTA:ForegroundServiceWakeLock"
+                )
+            }
+            wakeLock?.acquire()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -222,13 +252,7 @@ class VantaForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        try {
-            if (wakeLock?.isHeld == true) {
-                wakeLock?.release()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        releaseWakeLock()
         val app = applicationContext as? VantaApplication
         app?.callMonitorManager?.stopMonitoring()
         app?.setServiceRunning(false)
@@ -246,15 +270,36 @@ class VantaForegroundService : Service() {
         const val ACTION_STOP = "com.example.vanta.action.STOP"
         const val ACTION_PAUSE = "com.example.vanta.action.PAUSE"
         const val ACTION_RESUME = "com.example.vanta.action.RESUME"
+        const val ACTION_SYNC_WAKE_LOCK = "com.example.vanta.action.SYNC_WAKE_LOCK"
 
-        fun start(context: Context) {
+        fun start(context: Context): Boolean {
             val intent = Intent(context, VantaForegroundService::class.java).apply {
                 action = ACTION_START
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
+            return try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                true
+            } catch (e: Exception) {
+                EventLogger.log(
+                    LogCategory.SERVICE,
+                    "Background start of foreground service deferred by OS: ${e.message ?: e.javaClass.simpleName}",
+                    LogLevel.WARNING
+                )
+                false
+            }
+        }
+
+        fun syncWakeLock(context: Context) {
+            val intent = Intent(context, VantaForegroundService::class.java).apply {
+                action = ACTION_SYNC_WAKE_LOCK
+            }
+            try {
                 context.startService(intent)
+            } catch (_: Exception) {
             }
         }
 
@@ -262,7 +307,14 @@ class VantaForegroundService : Service() {
             val intent = Intent(context, VantaForegroundService::class.java).apply {
                 action = ACTION_STOP
             }
-            context.startService(intent)
+            try {
+                context.startService(intent)
+            } catch (_: Exception) {
+                try {
+                    context.stopService(Intent(context, VantaForegroundService::class.java))
+                } catch (_: Exception) {
+                }
+            }
         }
     }
 }

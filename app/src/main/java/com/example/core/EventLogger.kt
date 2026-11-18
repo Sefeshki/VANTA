@@ -16,8 +16,11 @@ object EventLogger {
     private val _logs = MutableStateFlow<List<LogEntry>>(emptyList())
     val logs: StateFlow<List<LogEntry>> = _logs.asStateFlow()
 
-    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    private val timeFormatLocal = object : ThreadLocal<SimpleDateFormat>() {
+        override fun initialValue(): SimpleDateFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    }
 
+    @Synchronized
     fun log(category: LogCategory, message: String, level: LogLevel = LogLevel.INFO) {
         // Redact any accidental tokens or sensitive sequences
         val safeMessage = sanitize(message)
@@ -37,13 +40,15 @@ object EventLogger {
         _logs.value = currentList
     }
 
+    @Synchronized
     fun clear() {
         _logs.value = emptyList()
         log(LogCategory.SYSTEM, "Terminal events cleared by user", LogLevel.INFO)
     }
 
     fun formatTime(timestamp: Long): String {
-        return timeFormat.format(Date(timestamp))
+        val formatter = timeFormatLocal.get() ?: SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        return formatter.format(Date(timestamp))
     }
 
     private fun sanitize(input: String): String {

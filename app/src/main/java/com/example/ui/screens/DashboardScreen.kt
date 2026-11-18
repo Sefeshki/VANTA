@@ -163,7 +163,7 @@ fun DashboardScreen(
                 app.networkMonitor.refresh()
                 app.simManager.refreshSims()
                 app.callMonitorManager.refreshObserverState()
-                if (telegramConfig.hasToken) {
+                if (app.preferencesManager.telegramConfig.value.hasToken) {
                     app.telegramBotManager.checkConnection()
                 }
             }
@@ -408,12 +408,21 @@ fun DashboardScreen(
                             val targetState = !prefs.isForwardingEnabled
                             app.preferencesManager.setForwardingEnabled(targetState)
                             if (targetState) {
-                                VantaForegroundService.start(context)
-                                EventLogger.log(
-                                    LogCategory.SYSTEM,
-                                    "Forwarding turned ON",
-                                    LogLevel.SUCCESS
-                                )
+                                val started = VantaForegroundService.start(context)
+                                if (started) {
+                                    EventLogger.log(
+                                        LogCategory.SYSTEM,
+                                        "Forwarding turned ON",
+                                        LogLevel.SUCCESS
+                                    )
+                                } else {
+                                    app.preferencesManager.setForwardingEnabled(false)
+                                    Toast.makeText(
+                                        context,
+                                        "Android prevented starting the background service.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                             } else {
                                 VantaForegroundService.stop(context)
                                 EventLogger.log(
@@ -584,7 +593,12 @@ fun DashboardScreen(
                                     Spacer(modifier = Modifier.width(2.dp))
                                     Switch(
                                         checked = prefs.isStayAliveEnabled,
-                                        onCheckedChange = { app.preferencesManager.setStayAliveEnabled(it) },
+                                        onCheckedChange = { enabled ->
+                                            app.preferencesManager.setStayAliveEnabled(enabled)
+                                            if (isServiceRunning) {
+                                                VantaForegroundService.syncWakeLock(context)
+                                            }
+                                        },
                                         colors = switchColors,
                                         modifier = Modifier
                                             .scale(0.82f)

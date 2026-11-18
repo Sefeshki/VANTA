@@ -816,7 +816,7 @@ fun TelegramConfigScreen(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "How we keep it secure: Your bot token is encrypted inside Android's hardware Keystore. VANTA talks directly to Telegram over secure HTTPS with zero middleman servers.",
+                            text = "How we keep it secure: Your bot token is encrypted locally with AES-256-GCM (using Android Keystore when supported by your device). VANTA talks directly to Telegram over HTTPS with zero middleman servers.",
                             style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                             color = colors.textSecondary
                         )

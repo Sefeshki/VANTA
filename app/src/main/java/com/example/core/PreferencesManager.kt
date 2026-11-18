@@ -109,9 +109,10 @@ class PreferencesManager(context: Context) {
 
     @Synchronized
     fun addForwardDestination(chatId: Long, label: String) {
+        val cleanLabel = label.trim().ifBlank { "Chat $chatId" }
         val current = loadForwardDestinations().toMutableList()
         current.removeAll { it.chatId == chatId }
-        current.add(0, ForwardDestination(chatId = chatId, label = label.trim()))
+        current.add(0, ForwardDestination(chatId = chatId, label = cleanLabel))
         saveForwardDestinations(current)
         _telegramConfig.value = loadTelegramConfig()
     }

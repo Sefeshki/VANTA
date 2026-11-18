@@ -24,6 +24,8 @@ import com.example.telephony.SmsGateway
 import com.example.widget.VantaWidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,6 +61,8 @@ class VantaApplication : Application() {
 
     private val _serviceStartedElapsedMs = MutableStateFlow<Long?>(null)
     val serviceStartedElapsedMs: StateFlow<Long?> = _serviceStartedElapsedMs.asStateFlow()
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -118,6 +122,10 @@ class VantaApplication : Application() {
             }
             VantaWidgetUpdater.updateAllWidgets(this, force = true)
         }
+        telegramBotManager.onServiceStopRequested = {
+            VantaForegroundService.stop(this)
+            VantaWidgetUpdater.updateAllWidgets(this, force = true)
+        }
         telegramBotManager.onToggleSimMaster = { slotIndex, enabled ->
             preferencesManager.setSimMasterEnabled(slotIndex, enabled)
             VantaWidgetUpdater.updateAllWidgets(this, force = true)
@@ -135,8 +143,6 @@ class VantaApplication : Application() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
         }
         telegramBotManager.smsGateway = smsGateway
-
-        val appScope = CoroutineScope(Dispatchers.IO)
 
         appScope.launch {
             networkMonitor.isInternetAvailable.collect { available ->
@@ -241,6 +247,13 @@ class VantaApplication : Application() {
             pendingCount = pending,
             totalDeliveredCount = totalDelivered
         )
+    }
+
+    override fun onTerminate() {
+        telegramBotManager.stopPolling()
+        networkMonitor.stop()
+        appScope.cancel()
+        super.onTerminate()
     }
 
     companion object {

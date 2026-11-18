@@ -11,6 +11,7 @@ import com.example.data.model.LogLevel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -144,5 +145,14 @@ class NetworkMonitor(private val context: Context) {
                 EventLogger.log(LogCategory.TELEGRAM, "Telegram Bot API unreachable: ${e.message}", LogLevel.WARNING)
             }
         }
+    }
+
+    fun stop() {
+        try {
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (_: Exception) {
+        }
+        reachabilityJob?.cancel()
+        scope.cancel()
     }
 }

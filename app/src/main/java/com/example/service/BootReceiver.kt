@@ -27,12 +27,14 @@ class BootReceiver : BroadcastReceiver() {
 
         // Only recover if user had explicitly enabled auto-start AND forwarding was previously active
         if (prefs.isAutoStartEnabled && prefs.isForwardingEnabled && telegramConfig.hasToken) {
-            EventLogger.log(
-                LogCategory.SERVICE,
-                "Auto-Start criteria met: restoring VANTA Foreground Service after boot",
-                LogLevel.SUCCESS
-            )
-            VantaForegroundService.start(context)
+            val started = VantaForegroundService.start(context)
+            if (started) {
+                EventLogger.log(
+                    LogCategory.SERVICE,
+                    "Auto-Start criteria met: restoring VANTA Foreground Service after boot",
+                    LogLevel.SUCCESS
+                )
+            }
         } else {
             EventLogger.log(
                 LogCategory.SERVICE,

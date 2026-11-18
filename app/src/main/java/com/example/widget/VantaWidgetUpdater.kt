@@ -558,7 +558,7 @@ object VantaWidgetUpdater {
             !isAvailable -> "No active SIM inserted in slot ${slotIndex + 1}"
             !settings.masterEnabled -> "Master switch OFF in SIM Control"
             else -> buildList {
-                if (simInfo != null && simInfo.subId >= 0) add("Sub #${simInfo.subId}")
+                if (simInfo.subId >= 0) add("Sub #${simInfo.subId}")
                 add(forwardingPart)
                 if (settings.callLogForwardingEnabled || settings.incomingCallNotificationsEnabled) add("Calls")
                 if (settings.smsSendingEnabled) add("Reply")

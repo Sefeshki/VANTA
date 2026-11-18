@@ -39,6 +39,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.core.EventLogger
+import com.example.core.SecurityManager
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GithubStarButton
 import com.example.ui.components.GlowCard
@@ -71,6 +73,7 @@ fun SettingsScreen(
     val isInternet by app.networkMonitor.isInternetAvailable.collectAsState()
     val isServiceRunning by app.isServiceRunning.collectAsState()
     val isBotConnected by app.telegramBotManager.isConnected.collectAsState()
+    val hasHardwareKeystore = remember { SecurityManager.isUsingHardwareKeystore() }
 
     EventHorizonBackground {
         Scaffold(
@@ -199,9 +202,13 @@ fun SettingsScreen(
                                     color = colors.textPrimary
                                 )
                                 Text(
-                                    text = if (telegramConfig.hasToken) "@${telegramConfig.botUsername ?: "bot"} • Connected" else "Tap to connect your bot",
+                                    text = when {
+                                        !telegramConfig.hasToken -> "Tap to connect your bot"
+                                        telegramConfig.authorizedChatId == null -> "@${telegramConfig.botUsername ?: "bot"} • Pairing required"
+                                        else -> "@${telegramConfig.botUsername ?: "bot"} • Paired"
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (telegramConfig.hasToken) colors.success else colors.warning
+                                    color = if (telegramConfig.hasToken && telegramConfig.authorizedChatId != null) colors.success else colors.warning
                                 )
                             }
                         }
@@ -267,7 +274,11 @@ fun SettingsScreen(
                         DiagnosticRow(name = "Internet Connection", status = if (isInternet) "Online" else "Offline", isOk = isInternet)
                         DiagnosticRow(name = "Telegram Bot API", status = if (isBotConnected) "Connected" else "Unreachable", isOk = isBotConnected)
                         DiagnosticRow(name = "Background Worker", status = if (isServiceRunning) "Running" else "Idle", isOk = isServiceRunning)
-                        DiagnosticRow(name = "Token Encryption", status = "Hardware Keystore (AES-256)", isOk = true)
+                        DiagnosticRow(
+                            name = "Token Encryption",
+                            status = if (hasHardwareKeystore) "Hardware Keystore (AES-256)" else "Software AES-256-GCM Fallback",
+                            isOk = hasHardwareKeystore
+                        )
                     }
                 }
 

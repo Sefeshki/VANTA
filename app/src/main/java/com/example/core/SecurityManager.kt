@@ -127,6 +127,19 @@ object SecurityManager {
         }
     }
 
+    @Synchronized
+    fun isUsingHardwareKeystore(): Boolean {
+        return try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            if (!keyStore.containsAlias(KEY_ALIAS)) {
+                ensureKeyExists()
+            }
+            keyStore.getEntry(KEY_ALIAS, null) is KeyStore.SecretKeyEntry
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun maskToken(token: String): String {
         if (token.length <= 8) return "••••••••"
         val prefix = token.take(4)

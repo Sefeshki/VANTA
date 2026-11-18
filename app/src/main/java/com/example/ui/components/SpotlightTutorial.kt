@@ -97,7 +97,7 @@ val VANTA_TUTORIAL_STEPS = listOf(
     TutorialStep(
         title = "Auto Start",
         subtitle = "For when your phone reboots overnight",
-        description = "If your secondary phone restarts, this picks right back up where you left off without needing you to touch the phone."
+        description = "If your phone restarts, VANTA resumes forwarding automatically when permitted by Android. Disable battery optimizations in Permissions for Android 15+ reliability."
     ),
     TutorialStep(
         title = "Privacy & Control",

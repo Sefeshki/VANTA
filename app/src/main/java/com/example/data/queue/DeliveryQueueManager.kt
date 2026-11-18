@@ -34,9 +34,11 @@ class DeliveryQueueManager(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val mutex = Mutex()
+    private val fingerprintLock = Any()
     private val queue = mutableListOf<DeliveryQueueItem>()
 
-    // Set of message fingerprints delivered or processed in the last 15 minutes to prevent duplicates
+    // Fingerprints of active queued items and items delivered in the last 15 minutes
+    private val activeFingerprints = mutableSetOf<String>()
     private val processedFingerprints = LinkedHashMap<String, Long>()
 
     private val _pendingCount = MutableStateFlow(0)
@@ -51,17 +53,18 @@ class DeliveryQueueManager(
     fun enqueue(sms: SmsMessageItem): Boolean {
         val fingerprint = computeFingerprint(sms)
         val now = System.currentTimeMillis()
-
         val cutoff = now - (15 * 60 * 1000)
-        processedFingerprints.entries.removeIf { it.value < cutoff }
 
-        if (processedFingerprints.containsKey(fingerprint)) {
-            EventLogger.log(
-                LogCategory.SMS_DELIVERY,
-                "Duplicate SMS detected from '${sms.sender}' — skipped to prevent duplicate forwarding",
-                LogLevel.WARNING
-            )
-            return false
+        synchronized(fingerprintLock) {
+            processedFingerprints.entries.removeIf { it.value < cutoff }
+            if (processedFingerprints.containsKey(fingerprint) || !activeFingerprints.add(fingerprint)) {
+                EventLogger.log(
+                    LogCategory.SMS_DELIVERY,
+                    "Duplicate SMS detected from '${sms.sender}' — skipped to prevent duplicate forwarding",
+                    LogLevel.WARNING
+                )
+                return false
+            }
         }
 
         val item = DeliveryQueueItem(
@@ -71,17 +74,18 @@ class DeliveryQueueManager(
         )
 
         scope.launch {
-            mutex.withLock {
+            val size = mutex.withLock {
                 queue.add(item)
-                _pendingCount.value = queue.count { it.status == DeliveryStatus.PENDING }
+                val pending = queue.count { it.status == DeliveryStatus.PENDING }
+                _pendingCount.value = pending
+                pending
             }
+            EventLogger.log(
+                LogCategory.SMS_DELIVERY,
+                "Enqueued SMS from '${sms.sender}' for delivery (Queue size: $size)",
+                LogLevel.INFO
+            )
         }
-
-        EventLogger.log(
-            LogCategory.SMS_DELIVERY,
-            "Enqueued SMS from '${sms.sender}' for delivery (Queue size: ${_pendingCount.value + 1})",
-            LogLevel.INFO
-        )
         return true
     }
 
@@ -123,35 +127,55 @@ class DeliveryQueueManager(
             subId = item.sms.subId
         )
 
+        val fingerprint = computeFingerprint(item.sms)
+        var backoffDelay = 0L
+        var notifySuccess = false
+        var droppedError: String? = null
+
         mutex.withLock {
             if (result.isSuccess) {
                 item.status = DeliveryStatus.DELIVERED
-                processedFingerprints[computeFingerprint(item.sms)] = System.currentTimeMillis()
+                synchronized(fingerprintLock) {
+                    activeFingerprints.remove(fingerprint)
+                    processedFingerprints[fingerprint] = System.currentTimeMillis()
+                }
                 queue.remove(item)
-                onDeliverySuccess?.invoke()
+                notifySuccess = true
             } else {
                 val errorMsg = result.exceptionOrNull()?.message ?: "Unknown error"
                 item.lastError = errorMsg
                 if (item.attemptCount >= MAX_RETRIES) {
                     item.status = DeliveryStatus.FAILED
+                    synchronized(fingerprintLock) {
+                        activeFingerprints.remove(fingerprint)
+                    }
                     queue.remove(item)
                     EventLogger.log(
                         LogCategory.ERROR,
                         "SMS from '${item.sms.sender}' dropped after $MAX_RETRIES delivery attempts: $errorMsg",
                         LogLevel.ERROR
                     )
-                    onDeliveryDropped?.invoke(errorMsg)
+                    droppedError = errorMsg
                 } else {
-                    val backoffDelay = (1000L * (1 shl item.attemptCount)).coerceAtMost(30000L)
+                    backoffDelay = (1000L * (1 shl item.attemptCount)).coerceAtMost(30000L)
                     EventLogger.log(
                         LogCategory.SMS_DELIVERY,
                         "Delivery attempt ${item.attemptCount} failed ($errorMsg), retrying in ${backoffDelay / 1000}s",
                         LogLevel.WARNING
                     )
-                    delay(backoffDelay)
                 }
             }
             _pendingCount.value = queue.count { it.status == DeliveryStatus.PENDING }
+        }
+
+        if (notifySuccess) {
+            onDeliverySuccess?.invoke()
+        }
+        if (droppedError != null) {
+            onDeliveryDropped?.invoke(droppedError)
+        }
+        if (backoffDelay > 0L) {
+            delay(backoffDelay)
         }
     }
 

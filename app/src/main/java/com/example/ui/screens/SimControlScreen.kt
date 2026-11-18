@@ -140,12 +140,12 @@ fun SimControlScreen(
         app.simManager.refreshSims()
         permissionTick++
 
-        val allGranted = action?.requirement?.permissions?.all { perm ->
+        val allGranted = action != null && action.requirement.permissions.all { perm ->
             results[perm] == true || PermissionHelper.isGranted(context, perm)
-        } ?: false
+        }
 
-        if (allGranted && action != null) {
-            action.onGrantedCallback()
+        if (allGranted) {
+            action!!.onGrantedCallback()
             app.callMonitorManager.refreshObserverState()
         } else {
             Toast.makeText(

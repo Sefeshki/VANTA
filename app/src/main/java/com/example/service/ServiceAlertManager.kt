@@ -320,15 +320,6 @@ class ServiceAlertManager(
         }
     }
 
-    private fun formatSimAvailabilitySummary(sims: List<SimCardInfo>): String {
-        val active = sims.filter { it.isAvailable }
-        return if (active.isEmpty()) {
-            "No active SIM cards detected."
-        } else {
-            active.joinToString(" • ") { "SIM ${it.slotIndex + 1}: ${it.carrierName}" }
-        }
-    }
-
     private fun friendlyPermissionName(permission: String): String = when (permission) {
         Manifest.permission.RECEIVE_SMS -> "SMS Reception"
         Manifest.permission.READ_PHONE_STATE -> "Phone / SIM State"

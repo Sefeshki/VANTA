@@ -57,6 +57,7 @@ class TelegramBotManager(
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private var pollingJob: Job? = null
+    private var activePollingToken: String? = null
     private var lastUpdateId: Long? = null
 
     private val _isPollingActive = MutableStateFlow(false)
@@ -76,6 +77,7 @@ class TelegramBotManager(
     var isInternetAvailableProvider: (() -> Boolean)? = null
     var pendingQueueCountProvider: (() -> Int)? = null
     var onSetForwardingEnabled: ((Boolean) -> Unit)? = null
+    var onServiceStopRequested: (() -> Unit)? = null
     var onToggleSimMaster: ((Int, Boolean) -> Unit)? = null
     var smsGateway: SmsGateway? = null
     var clockProvider: () -> Long = { System.currentTimeMillis() }
@@ -153,7 +155,7 @@ class TelegramBotManager(
             _isConnected.value = res.isSuccess
             if (res.isSuccess) {
                 refreshCustomEmojis(token)
-                if (!_isPollingActive.value) {
+                if (!_isPollingActive.value || activePollingToken != token) {
                     startPolling()
                 }
             }
@@ -196,6 +198,7 @@ class TelegramBotManager(
         newMessageInFlightKeys.clear()
         preferencesManager.disconnectTelegram()
         _isConnected.value = false
+        onServiceStopRequested?.invoke()
         EventLogger.log(LogCategory.SECURITY, "Telegram bot disconnected and credentials purged", LogLevel.WARNING)
     }
 
@@ -205,35 +208,47 @@ class TelegramBotManager(
 
         refreshCustomEmojis(token)
 
-        if (pollingJob?.isActive == true) return
+        if (pollingJob?.isActive == true && activePollingToken == token) return
+        if (pollingJob?.isActive == true) {
+            pollingJob?.cancel()
+            pollingJob = null
+        }
 
+        activePollingToken = token
         _isPollingActive.value = true
         pollingJob = scope.launch {
             EventLogger.log(LogCategory.TELEGRAM, "Started Telegram command listener", LogLevel.INFO)
-            while (isActive) {
-                try {
-                    val result = apiClient.getUpdates(token, lastUpdateId?.plus(1), limit = 10)
-                    result.onSuccess { updates ->
-                        _isConnected.value = true
-                        for (update in updates) {
-                            lastUpdateId = maxOf(lastUpdateId ?: update.updateId, update.updateId)
-                            handleUpdate(update)
+            try {
+                while (isActive) {
+                    try {
+                        val result = apiClient.getUpdates(token, lastUpdateId?.plus(1), limit = 10)
+                        result.onSuccess { updates ->
+                            _isConnected.value = true
+                            for (update in updates) {
+                                lastUpdateId = maxOf(lastUpdateId ?: update.updateId, update.updateId)
+                                handleUpdate(update)
+                            }
+                        }.onFailure {
+                            _isConnected.value = false
                         }
-                    }.onFailure {
+                    } catch (_: Exception) {
                         _isConnected.value = false
                     }
-                } catch (_: Exception) {
-                    _isConnected.value = false
+                    delay(2500)
                 }
-                delay(2500)
+            } finally {
+                _isPollingActive.value = false
+                if (activePollingToken == token) {
+                    activePollingToken = null
+                }
             }
-            _isPollingActive.value = false
         }
     }
 
     fun stopPolling() {
         pollingJob?.cancel()
         pollingJob = null
+        activePollingToken = null
         _isPollingActive.value = false
     }
 
@@ -2253,21 +2268,6 @@ class TelegramBotManager(
         return if (originalSlot in 0..1) originalSlot else 0
     }
 
-    private fun formatSimLabelForReply(slotIndex: Int): String {
-        val sims = simInfoProvider?.invoke().orEmpty()
-        val sim = sims.firstOrNull { it.slotIndex == slotIndex }
-        val carrier = sim?.carrierName?.takeIf { it.isNotBlank() }
-        val base = if (carrier != null) "SIM ${slotIndex + 1} · $carrier" else "SIM ${slotIndex + 1}"
-        val simSettings = preferencesManager.preferences.value.simControl.forSlot(slotIndex)
-        return when {
-            sim != null && !sim.hasPermission -> "$base (Permission needed)"
-            sim != null && !sim.isAvailable -> "$base (Unavailable)"
-            !simSettings.masterEnabled -> "$base (SIM Disabled)"
-            !simSettings.smsSendingEnabled -> "$base (Sending Disabled)"
-            else -> base
-        }
-    }
-
     private fun buildReplyPromptKeyboard(sessionId: String): List<List<InlineButton>> {
         return listOf(listOf(InlineButton(text = "Cancel", callbackData = "rcancel:$sessionId")))
     }
@@ -2290,7 +2290,7 @@ class TelegramBotManager(
             rows.add(
                 pair.map { dest ->
                     InlineButton(
-                        text = dest.label,
+                        text = dest.label.trim().ifBlank { "Chat ${dest.chatId}" },
                         callbackData = "fwdsel:$sessionId:${dest.chatId}"
                     )
                 }

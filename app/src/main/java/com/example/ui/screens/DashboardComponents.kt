@@ -261,7 +261,11 @@ fun BoxScope.RightNavigationOverlay(
                     DrawerNavItem(
                         icon = Icons.AutoMirrored.Outlined.Send,
                         title = "Telegram Bot",
-                        subtitle = if (telegramConfig.hasToken) "@${telegramConfig.botUsername ?: "bot"} • Connected" else "Configure token & chat pairing",
+                        subtitle = when {
+                            !telegramConfig.hasToken -> "Configure token & chat pairing"
+                            telegramConfig.authorizedChatId == null -> "@${telegramConfig.botUsername ?: "bot"} • Pairing required"
+                            else -> "@${telegramConfig.botUsername ?: "bot"} • Paired"
+                        },
                         onClick = {
                             onDismiss()
                             onNavigateToTelegram()

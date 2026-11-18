@@ -236,7 +236,7 @@ object TelegramEntityHelper {
         sentTimestampMillis: Long = System.currentTimeMillis(),
         messageText: String
     ): FormattedMessage {
-        val timeText = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(sentTimestampMillis))
+        val timeText = formatTimestamp(sentTimestampMillis)
         val simName = "SIM ${simSlot + 1}"
         val text = buildString {
             append("Message sent!\n\n")

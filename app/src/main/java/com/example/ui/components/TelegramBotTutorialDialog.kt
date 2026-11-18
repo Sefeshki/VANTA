@@ -33,10 +33,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
@@ -261,7 +261,7 @@ fun TelegramBotTutorialDialog(
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Icon(imageVector = Icons.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(imageVector = Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("OPEN @BotFather IN TELEGRAM", fontWeight = FontWeight.Bold)
                                     }
@@ -360,7 +360,7 @@ fun TelegramBotTutorialDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Token Security Reminder: Never share your bot token with others. Anyone with it can control the bot. VANTA encrypts it directly in Android's hardware Keystore with AES-256-GCM authenticated encryption.",
+                                text = "Token Security Reminder: Never share your bot token with others. Anyone with it can control the bot. VANTA encrypts it locally with AES-256-GCM (using Android Keystore when supported by your device).",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 16.sp),
                                 color = colors.textSecondary
                             )

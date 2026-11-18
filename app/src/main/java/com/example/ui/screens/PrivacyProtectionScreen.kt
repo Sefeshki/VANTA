@@ -38,6 +38,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.core.EventLogger
+import com.example.core.SecurityManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.alpha
@@ -71,6 +73,7 @@ fun PrivacyProtectionScreen(
 
     val prefs by app.preferencesManager.preferences.collectAsState()
     val telegramConfig by app.preferencesManager.telegramConfig.collectAsState()
+    val hasHardwareKeystore = remember { SecurityManager.isUsingHardwareKeystore() }
     val anyOtpForwardingEnabled = prefs.simControl.isAnyOtpForwardingEnabled()
 
     EventHorizonBackground {
@@ -164,14 +167,18 @@ fun PrivacyProtectionScreen(
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "Hardware-Backed Security",
+                                    text = if (hasHardwareKeystore) "Hardware-Backed Security" else "Local AES-GCM Encryption",
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                     color = colors.textPrimary
                                 )
                                 Text(
-                                    text = "AES-256-GCM authenticated encryption",
+                                    text = if (hasHardwareKeystore) {
+                                        "AES-256-GCM authenticated encryption"
+                                    } else {
+                                        "AES-256-GCM software fallback (Keystore unavailable)"
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = colors.textMuted
+                                    color = if (hasHardwareKeystore) colors.textMuted else colors.warning
                                 )
                             }
                         }
@@ -185,7 +192,11 @@ fun PrivacyProtectionScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "Your Telegram bot tokens and encryption secrets are stored directly in Android Keystore with master keys protected in device hardware. Tokens never touch unencrypted storage.",
+                                text = if (hasHardwareKeystore) {
+                                    "Your Telegram bot tokens are encrypted with master keys stored in Android Keystore hardware and excluded from cloud backups."
+                                } else {
+                                    "Android Keystore is unavailable in this environment, so local AES-256-GCM fallback encryption is active and excluded from cloud backups."
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colors.textSecondary,
                                 modifier = Modifier.padding(12.dp)

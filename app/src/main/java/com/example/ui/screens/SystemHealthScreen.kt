@@ -29,6 +29,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.VantaApplication
 import com.example.core.EventLogger
+import com.example.core.SecurityManager
 import com.example.ui.components.CyberTerminal
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.LiquidGlassCard
@@ -63,6 +65,8 @@ fun SystemHealthScreen(
     val isServiceRunning by app.isServiceRunning.collectAsState()
     val sims by app.simManager.detectedSims.collectAsState()
     val prefs by app.preferencesManager.preferences.collectAsState()
+    val telegramConfig by app.preferencesManager.telegramConfig.collectAsState()
+    val hasHardwareKeystore = remember { SecurityManager.isUsingHardwareKeystore() }
     val logs by EventLogger.logs.collectAsState()
 
     val hasSimPerm = sims.any { it.hasPermission }
@@ -164,10 +168,16 @@ fun SystemHealthScreen(
                         )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color.White.copy(alpha = 0.08f))
 
+                        val botSessionDetail = when {
+                            !telegramConfig.hasToken -> "Not Configured"
+                            telegramConfig.authorizedChatId == null -> if (isBotConnected) "Token Verified (Pairing Pending)" else "Pairing Pending (Offline)"
+                            isBotConnected -> "Authorized & Paired"
+                            else -> "Paired (Disconnected)"
+                        }
                         CoreSystemRow(
                             name = "Bot Session",
-                            detail = if (isBotConnected) "Authorized & Paired" else "Disconnected",
-                            isHealthy = isBotConnected
+                            detail = botSessionDetail,
+                            isHealthy = isBotConnected && telegramConfig.hasToken && telegramConfig.authorizedChatId != null
                         )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color.White.copy(alpha = 0.08f))
 
@@ -179,9 +189,9 @@ fun SystemHealthScreen(
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color.White.copy(alpha = 0.08f))
 
                         CoreSystemRow(
-                            name = "Hardware Keystore",
-                            detail = "AES-256-GCM Hardware-Backed",
-                            isHealthy = true
+                            name = if (hasHardwareKeystore) "Hardware Keystore" else "Credential Encryption",
+                            detail = if (hasHardwareKeystore) "AES-256-GCM Hardware-Backed" else "AES-256-GCM Software Fallback",
+                            isHealthy = hasHardwareKeystore
                         )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color.White.copy(alpha = 0.08f))
 
