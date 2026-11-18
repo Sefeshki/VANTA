@@ -50,7 +50,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -84,6 +83,7 @@ import com.example.ui.components.GithubStarButton
 import com.example.ui.components.GlowCard
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
+import com.example.ui.components.vantaSwitchColors
 import com.example.ui.theme.LocalVantaColors
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -506,7 +506,11 @@ fun StatusPanel(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 10.sp
                     ),
-                    color = colors.textMuted
+                    color = if (simControl.sim1.masterEnabled || simControl.sim2.masterEnabled) {
+                        colors.success
+                    } else {
+                        colors.textMuted
+                    }
                 )
             }
 
@@ -713,8 +717,7 @@ private fun SimLiveStatusRow(
         !hasPerm -> colors.warning
         isAbsent -> colors.textMuted
         !settings.masterEnabled -> colors.textMuted
-        isBridgeForwardingOn -> colors.success
-        else -> Color.White.copy(alpha = 0.72f)
+        else -> colors.success
     }
     val dotActive = hasPerm && isAvailable && settings.masterEnabled
 
@@ -784,7 +787,12 @@ private fun SimLiveStatusRow(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 9.5.sp
                     ),
-                    color = if (!hasPerm) colors.warning else colors.textMuted,
+                    color = when {
+                        !hasPerm -> colors.warning
+                        isAbsent || !settings.masterEnabled -> colors.textMuted
+                        isBridgeForwardingOn -> colors.success
+                        else -> colors.textSecondary
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -797,16 +805,7 @@ private fun SimLiveStatusRow(
             checked = if (isAbsent) false else settings.masterEnabled,
             enabled = !isAbsent,
             onCheckedChange = onToggleMaster,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                uncheckedThumbColor = colors.textMuted,
-                uncheckedTrackColor = colors.surfaceElevated,
-                uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
-                disabledCheckedThumbColor = colors.textMuted,
-                disabledUncheckedThumbColor = colors.textMuted.copy(alpha = 0.55f),
-                disabledUncheckedTrackColor = colors.surfaceElevated.copy(alpha = 0.55f)
-            ),
+            colors = vantaSwitchColors(),
             modifier = Modifier
                 .scale(0.72f)
                 .testTag("live_status_sim_switch_$slotIndex")

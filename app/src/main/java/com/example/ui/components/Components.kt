@@ -31,6 +31,8 @@ import androidx.compose.material.icons.rounded.StarOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwitchColors
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -254,6 +256,30 @@ fun StatusDot(
                 .background(targetColor)
         )
     }
+}
+
+/**
+ * Shared switch color tokens across VANTA:
+ * - ON: bright phosphor green (#39FF14) track with pure white thumb
+ * - OFF: pure black AMOLED track with subtle crisp border and muted silver thumb
+ */
+@Composable
+fun vantaSwitchColors(): SwitchColors {
+    val colors = LocalVantaColors.current
+    return SwitchDefaults.colors(
+        checkedThumbColor = Color.White,
+        checkedTrackColor = colors.success,
+        checkedBorderColor = colors.success,
+        uncheckedThumbColor = colors.textMuted,
+        uncheckedTrackColor = colors.background,
+        uncheckedBorderColor = Color.White.copy(alpha = 0.24f),
+        disabledCheckedThumbColor = colors.textMuted,
+        disabledCheckedTrackColor = colors.background,
+        disabledCheckedBorderColor = Color.White.copy(alpha = 0.14f),
+        disabledUncheckedThumbColor = colors.textMuted.copy(alpha = 0.55f),
+        disabledUncheckedTrackColor = colors.background,
+        disabledUncheckedBorderColor = Color.White.copy(alpha = 0.14f)
+    )
 }
 
 /**

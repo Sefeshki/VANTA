@@ -46,7 +46,7 @@ data class WidgetStatusSnapshot(
 
 object VantaWidgetUpdater {
 
-    private val ACTIVE_GREEN = Color.parseColor("#22C55E")
+    private val ACTIVE_GREEN = Color.parseColor("#39FF14")
     private val ERROR_RED = Color.parseColor("#EF4444")
     private val MUTED_GRAY = Color.parseColor("#71717A")
     private val PRIMARY_WHITE = Color.parseColor("#FFFFFFFF")

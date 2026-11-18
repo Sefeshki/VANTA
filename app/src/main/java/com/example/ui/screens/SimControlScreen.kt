@@ -52,7 +52,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -93,6 +92,7 @@ import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.GlowCard
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.StatusDot
+import com.example.ui.components.vantaSwitchColors
 import com.example.ui.theme.LocalVantaColors
 
 private data class PendingPermissionAction(
@@ -797,13 +797,7 @@ private fun SimIdentityAndMasterCard(
                         checked = settings.masterEnabled,
                         enabled = isSlotAvailable || !sim.hasPermission,
                         onCheckedChange = onToggleMaster,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                            uncheckedThumbColor = colors.textMuted,
-                            uncheckedTrackColor = colors.surfaceElevated,
-                            uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
-                        ),
+                        colors = vantaSwitchColors(),
                         modifier = Modifier
                             .scale(0.86f)
                             .testTag("sim_master_switch_$slotIndex")
@@ -941,13 +935,7 @@ private fun FeatureControlRow(
                 checked = featureSaved && !permissionMissing,
                 enabled = canInteract || permissionMissing,
                 onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                    uncheckedThumbColor = colors.textMuted,
-                    uncheckedTrackColor = colors.surfaceElevated,
-                    uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
-                ),
+                colors = vantaSwitchColors(),
                 modifier = Modifier
                     .scale(0.80f)
                     .testTag("sim_feature_${slotIndex}_${feature.name}")

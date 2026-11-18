@@ -32,7 +32,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -58,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import com.example.ui.components.EventHorizonBackground
 import com.example.ui.components.LiquidGlassCard
+import com.example.ui.components.vantaSwitchColors
 import com.example.ui.theme.LocalVantaColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -342,18 +342,7 @@ fun OtpProtectionControlCard(
                         checked = isProtectionEnabled,
                         enabled = !isLocked,
                         onCheckedChange = { if (!isLocked) onToggle(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                            checkedBorderColor = Color.White.copy(alpha = 0.45f),
-                            uncheckedThumbColor = colors.textMuted,
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.08f),
-                            uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
-                            disabledCheckedThumbColor = colors.textMuted,
-                            disabledCheckedTrackColor = Color.White.copy(alpha = 0.10f),
-                            disabledUncheckedThumbColor = colors.textMuted.copy(alpha = 0.6f),
-                            disabledUncheckedTrackColor = Color.White.copy(alpha = 0.05f)
-                        ),
+                        colors = vantaSwitchColors(),
                         modifier = Modifier.testTag(switchTestTag)
                     )
                 }

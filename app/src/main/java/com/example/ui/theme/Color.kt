@@ -22,7 +22,8 @@ val MonochromeGlow = Color(0xFFD4D4D8)
 val MonochromeDark = Color(0xFF1D1D22)
 
 // Semantic Status Colors (preserved for usability)
-val VantaSuccess = Color(0xFF22C55E)
+val VantaPhosphorGreen = Color(0xFF39FF14)
+val VantaSuccess = VantaPhosphorGreen
 val VantaWarning = Color(0xFFF59E0B)
 val VantaError = Color(0xFFEF4444)
 val VantaInfo = Color(0xFFE4E4E7)

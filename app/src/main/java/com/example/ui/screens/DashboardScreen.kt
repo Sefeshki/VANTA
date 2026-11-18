@@ -51,7 +51,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -109,6 +108,7 @@ import com.example.ui.components.UpdateDialog
 import com.example.ui.components.VpnToggleSwitch
 import com.example.ui.components.blurBitmapInPlace
 import com.example.ui.components.createBlurredBackdrop
+import com.example.ui.components.vantaSwitchColors
 import com.example.ui.theme.LocalVantaColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -550,13 +550,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // 5. STAY ALIVE & AUTO START CONTROLS (Compact Cards)
-                    val switchColors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = Color.White.copy(alpha = 0.28f),
-                        uncheckedThumbColor = colors.textMuted,
-                        uncheckedTrackColor = colors.surfaceElevated,
-                        uncheckedBorderColor = Color.White.copy(alpha = 0.16f)
-                    )
+                    val switchColors = vantaSwitchColors()
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
