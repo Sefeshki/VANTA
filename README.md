@@ -1,23 +1,23 @@
- <div align="center">
+&#x20;\<div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
+\<img src="[https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1](https://capsule-render.vercel.app/api?type=venom\&height=230\&color=0:000000,50:101010,100:000000\&text=VANTA\&fontColor=ffffff\&fontSize=85\&fontAlignY=45\&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM\&descAlignY=68\&descSize=16\&animation=fadeIn\&stroke=ffffff\&strokeWidth=1)" width="100%" />
 
 **Your phone. Your SIM. Your Telegram.**
 
 An Android app that turns a spare phone into your personal SMS gateway. Incoming messages are forwarded straight to your own Telegram bot.
 
-<br/>
+\<br/>
 
-<a href="https://github.com/Sefeshki/VANTA/releases"><img src="https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=ffffff&label=RELEASE&labelColor=000000" /></a>
-<a href="https://github.com/Sefeshki/VANTA"><img src="https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=ffffff&labelColor=000000" /></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge&labelColor=000000" /></a>
-<img src="https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge&labelColor=000000" />
+\<a href="[https://github.com/Sefeshki/VANTA/releases](https://github.com/Sefeshki/VANTA/releases)">\<img src="[https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=ffffff&label=RELEASE&labelColor=000000](https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge\&color=ffffff\&label=RELEASE\&labelColor=000000)" />\</a>
+\<a href="[https://github.com/Sefeshki/VANTA](https://github.com/Sefeshki/VANTA)">\<img src="[https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=ffffff&labelColor=000000](https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge\&color=ffffff\&labelColor=000000)" />\</a>
+\<a href="LICENSE">\<img src="[https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge&labelColor=000000](https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge\&labelColor=000000)" />\</a>
+\<img src="[https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge&labelColor=000000](https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge\&labelColor=000000)" />
 
-<br/><br/>
+\<br/>\<br/>
 
 [DOWNLOAD](https://github.com/Sefeshki/VANTA/releases/latest) · [SOURCE CODE](https://github.com/Sefeshki/VANTA) · [DEVELOPER](https://github.com/Sefeshki)
 
-</div>
+\</div>
 
 ---
 
@@ -33,77 +33,19 @@ I've also put a lot of work into making VANTA run well on older and newer Androi
 
 VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing its features, fixing problems, and working on the details. Security has been a major priority throughout development, and I've done my best to make the application as secure as possible.
 
+\<div align="center">   \<img     src="public/assets/images/vanta-showcase.png"     alt="VANTA App Showcase"     width="100%"   /> \</div>
+
 ---
 
 ### Features
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-#### SMS & SIM Management
-
-- Automatic incoming SMS forwarding
-- Dual-SIM support
-- Dedicated SIM management
-- Individual forwarding controls
-- SIM and carrier identification
-- Duplicate message protection
-- Reply to and forward incoming SMS, or send a new SMS from Telegram
-
-</td>
-<td width="50%" valign="top">
-
-#### Telegram
-
-- Connect your own Telegram bot
-- Bot token verification and secure pairing
-- Interactive buttons to control VANTA
-- Check SIM, service, and forwarding status
-- Reply to or forward incoming messages
-- Send new SMS messages directly from the bot
-- A button to star VANTA on GitHub
-- Built-in BotFather setup guidance
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-#### Monitoring & Widgets
-
-- Separate internet, Telegram, and forwarding status
-- Live connection and service monitoring
-- Notifications when connections are lost or restored
-- SIM and permission problem notifications
-- Four home-screen widgets with live status
-- Optional startup on boot
-- Connection checks and automatic recovery
-- Permission Center with individual and one-step permission setup
-
-</td>
-<td width="50%" valign="top">
-
-#### Performance & Security
-
-- Optimized for older and newer Android phones
-- Low RAM and battery usage
-- Lightweight background operation
-- Android Keystore-backed AES-256-GCM encryption
-- HTTPS communication with Telegram
-- Authorized Telegram users only
-- Optional OTP protection, managed inside the app only
-- Secure credential cleanup
-
-</td>
-</tr>
-</table>
+\<p align="center">
+&#x20; \<img src="public/assets/images/VANTA_FEATURES_INFOGRAPHIC_3to1.png" width="100%" alt="VANTA Features Infographic" />
+\</p>
 
 When you receive an SMS, you can reply to it or forward it directly from Telegram. You can also start a completely new SMS conversation from the bot by entering a recipient number and choosing which SIM to use when needed.
 
 Your messages go straight from your phone to your own Telegram bot, without passing through another forwarding service.
-
-VANTA also comes with home-screen widgets that show its live status, so you can check what's happening without opening the app.
 
 ---
 
@@ -121,41 +63,35 @@ When a connection drops, VANTA attempts to restore it automatically.
 
 I've spent a lot of time working on VANTA's security. Since the app handles personal messages and Telegram bot credentials, this was never something I wanted to overlook.
 
-Bot credentials are encrypted using Android Keystore-backed AES-256-GCM encryption. All communication with Telegram uses HTTPS, and only authorized Telegram users can interact with the bot.
-
-OTP protection is optional and turned off by default. It can only be enabled or managed inside the Android application, never through the Telegram bot. Credentials are securely cleared when you disconnect your bot.
-
-VANTA does not provide remote shell access or remote command execution. Your SMS messages are forwarded to the Telegram destination you configure. Keep your bot token private and only authorize people you trust.
+\<p align="center">
+&#x20; \<img src="public/assets/images/security_and_technology.png" width="100%" alt="VANTA Security and Technology" />
+\</p>
 
 ---
 
 ### Getting started
 
+\<p align="center">   \<img src="public/assets/images/getting-started.png" width="100%" alt="VANTA Setup Guide" /> \</p>
+
 **1. Create your bot**
 
-Open [@BotFather](https://t.me/BotFather), send `/newbot`, choose a name and username, and copy your API token.
+Open [@BotFather](https://t.me/BotFather), send `/newbot`, and follow the instructions. Keep your API token safe.
 
 **2. Connect VANTA**
 
-Install the app, open Telegram Setup, paste your token, and verify it. Generate a pairing code, open your bot, and send:
+Paste your token into Telegram Setup, verify it, and pair your account using:
 
 `/start YOUR_CODE`
 
 **3. Grant permissions**
 
-On first launch, VANTA guides you to the Permission Center. You can use **Grant All Permissions** or configure permissions individually. Follow the battery optimization guidance too.
+Use **Grant All Permissions** in the Permission Center, or grant permissions individually. Follow the battery optimization guidance.
 
-**4. Turn it on**
+**4. Start forwarding**
 
-Go back to the Dashboard and enable forwarding.
+Return to the Dashboard and enable forwarding.
 
 That's it. Your phone is now your SMS bridge.
-
----
-
-### Built with
-
-<img src="https://img.shields.io/badge/Kotlin-ffffff?style=flat-square&logo=kotlin&logoColor=000000" /> <img src="https://img.shields.io/badge/Jetpack_Compose-ffffff?style=flat-square&logo=jetpackcompose&logoColor=000000" /> <img src="https://img.shields.io/badge/Android-ffffff?style=flat-square&logo=android&logoColor=000000" /> <img src="https://img.shields.io/badge/Telegram_Bot_API-ffffff?style=flat-square&logo=telegram&logoColor=000000" />
 
 ---
 
@@ -181,16 +117,16 @@ Found a bug, ran into a problem, or have a suggestion? Feel free to open an issu
 
 ---
 
-<div align="center">
+\<div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
+\<img src="[https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn](https://capsule-render.vercel.app/api?type=waving\&height=100\&section=footer\&color=0:000000,50:101010,100:000000\&text=BEYOND%20THE%20ORDINARY.\&fontColor=ffffff\&fontSize=25\&fontAlignY=50\&animation=fadeIn)" width="100%" />
 
 Made by [Sefeshki](https://github.com/Sefeshki)
 
 [GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
 
-<sub>VANTA — Your device. Your connection. Your control.</sub>
+\<sub>VANTA — Your device. Your connection. Your control.\</sub>
 
-<sub>I put a lot of time and interest into building VANTA, and if you like what I've made, a <a href="https://github.com/Sefeshki/VANTA">GitHub star</a> would mean a lot and give me more motivation to keep creating.</sub>
+\<sub>I put a lot of time and interest into building VANTA, and if you like what I've made, a \<a href="[https://github.com/Sefeshki/VANTA](https://github.com/Sefeshki/VANTA)">GitHub star\</a> would mean a lot and give me more motivation to keep creating.\</sub>
 
-</div>
+\</div>
