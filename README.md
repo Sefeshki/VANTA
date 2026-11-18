@@ -1,4 +1,4 @@
-<div align="center">
+ <div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
@@ -34,13 +34,12 @@ An Android app that turns a spare phone into your personal SMS gateway. Incoming
 
 Got an old Android phone? Give it a job.
 
-VANTA turns it into your personal SMS gateway. It runs directly on your phone, forwarding incoming messages to your own Telegram bot without a separate server or third-party service.
+VANTA turns it into your personal SMS gateway. It runs directly on your phone, forwarding incoming messages to your own Telegram bot without requiring a separate forwarding server or subscription service.
 
-It supports dual-SIM devices, with independent controls for each SIM, and is designed to run efficiently on both older and newer Android phones, keeping resource and battery usage low.
+It supports dual-SIM devices, with independent controls for each SIM. It is designed to work across a range of Android devices, including older hardware.
 
-VANTA isn't a vibe-coded project. I've spent a lot of time building, testing, improving, and securing it. Every part has taken real work, and security has been a priority throughout development.
+**VANTA is a hands-on Android development project that I have built, tested, debugged, and continuously refined.** My work goes beyond the interface: it includes SMS and telephony integration, SIM management, Telegram API communication, background execution, connectivity monitoring, and message delivery handling. Each of these parts has required implementation work, testing, troubleshooting, and iteration.
 
-Enjoying VANTA? Leave a ⭐ on GitHub to support the project. It means a lot! 🤟❤️
 ---
 
 ### Features
@@ -54,19 +53,51 @@ Enjoying VANTA? Leave a ⭐ on GitHub to support the project. It means a lot! �
   />
 </p>
 
-When you receive an SMS, you can reply to it or forward it directly from Telegram. You can also start a completely new SMS conversation from the bot by entering a recipient number and choosing which SIM to use when needed.
+VANTA supports more than simply forwarding incoming messages.
 
-Your messages go straight from your phone to your own Telegram bot, without passing through another forwarding service.
+You can reply to received SMS messages directly through Telegram, forward messages, or start completely new SMS conversations by entering a recipient number. When needed, you can choose which SIM sends the message.
+
+Messages are sent from your phone to your own Telegram bot through the Telegram Bot API, without an additional forwarding service.
 
 ---
 
 ### How it works
 
-It's pretty straightforward. Your phone receives the SMS and VANTA sends it directly to your Telegram bot using the official Telegram Bot API.
+VANTA runs on the Android device that receives the messages.
 
-There is no separate server involved. VANTA keeps track of your internet connection, Telegram connection, and forwarding service separately, so you can see whether everything is actually working.
+When an SMS arrives, Android delivers the event to VANTA. The app processes the message and communicates with Telegram through the official Telegram Bot API.
 
-When a connection drops, VANTA attempts to restore it automatically.
+There is no separate VANTA forwarding server involved. The phone handles the forwarding process itself.
+
+VANTA also monitors different parts of its operating state separately:
+
+- **Internet connectivity:** whether the device has a network connection.
+- **Telegram connectivity:** whether the Telegram API can be reached.
+- **Forwarding service:** whether VANTA's forwarding functionality is active.
+
+When connectivity is interrupted, VANTA attempts to recover automatically.
+
+---
+
+### Engineering & implementation
+
+VANTA is built with Kotlin, Jetpack Compose, and native Android APIs.
+
+Its implementation is organized into components responsible for different parts of the application:
+
+| Component | Responsibility |
+|---|---|
+| SMS processing | Receiving and processing incoming SMS events |
+| SIM management | Detecting SIMs and managing individual SIM settings |
+| Telegram integration | Bot communication through the Telegram Bot API |
+| Background service | Maintaining the forwarding service |
+| Network monitoring | Tracking connectivity and Telegram availability |
+| Delivery queue | Managing message delivery operations |
+| Telephony integration | Handling outgoing SMS and call-related functionality |
+
+The project brings together Android permissions, telephony APIs, background execution, network handling, message processing, and external API integration.
+
+These systems have to work together reliably, particularly on devices with multiple SIM cards and different Android versions.
 
 ---
 
@@ -81,7 +112,15 @@ When a connection drops, VANTA attempts to restore it automatically.
   />
 </div>
 
-I've spent a lot of time working on VANTA's security. Since the app handles personal messages and Telegram bot credentials, this was never something I wanted to overlook.
+Security is an important part of VANTA because the application handles personal messages and Telegram bot credentials.
+
+VANTA communicates directly with Telegram through its official Bot API rather than routing messages through a separate forwarding server.
+
+The Telegram bot token is used to authenticate API requests. It should be treated as a secret credential and must never be shared publicly or included in bug reports.
+
+Keep in mind that enabling forwarding means the selected SMS content is transmitted to the Telegram chat associated with your bot. Only enable forwarding for messages you are comfortable sending there.
+
+For security concerns and responsible vulnerability reporting, see [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -150,6 +189,6 @@ Made by [Sefeshki](https://github.com/Sefeshki)
 
 <sub>VANTA — Your device. Your connection. Your control.</sub>
 
-<sub>I put a lot of time and interest into building VANTA, and if you like what I've made, a <a href="https://github.com/Sefeshki/VANTA">GitHub star</a> would mean a lot and give me more motivation to keep creating.</sub>
+<sub>Built through hands-on development, testing, debugging, and continuous improvement. If you appreciate the work, a <a href="https://github.com/Sefeshki/VANTA">GitHub star</a> helps motivate future development.</sub>
 
 </div>
