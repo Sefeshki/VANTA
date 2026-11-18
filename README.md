@@ -77,7 +77,7 @@ I've spent a lot of time working on VANTA's security. Since the app handles pers
 
 <div align="center">
   <img
-    src="public/assets/images/security.png"
+    src="public/assets/images/security_and_technology.png"
     alt="VANTA Security and Technology"
     width="100%"
     style="border-radius: 18px;"
