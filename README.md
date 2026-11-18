@@ -75,7 +75,7 @@ I've spent a lot of time working on VANTA's security. Since the app handles pers
 ### Getting started
 
 <p align="center">
-  <img src="public/assets/images/getting-started.png" width="100%" alt="VANTA Setup Guide" />
+  <img src="public/assets/images/getting_started.png" width="100%" alt="VANTA Setup Guide" />
 </p>
 
 **1. Create your bot**
