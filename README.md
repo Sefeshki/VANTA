@@ -25,13 +25,13 @@ An Android app that turns a spare phone into your personal SMS gateway. Incoming
 
 Got an old Android phone? Give it a job.
 
-VANTA runs directly on your phone, connects to your own Telegram bot, and forwards incoming SMS messages to you. No separate server or third-party forwarding service is needed.
+VANTA turns it into your personal SMS gateway. It runs directly on your phone, forwarding incoming messages to your own Telegram bot without a separate server or third-party service.
 
-It supports dual-SIM devices, with a dedicated section for managing each SIM independently.
+It supports dual-SIM devices, with independent controls for each SIM, and is designed to run efficiently on both older and newer Android phones, keeping resource and battery usage low.
 
-I've also put a lot of work into making VANTA run well on older and newer Android phones. It's designed to stay lightweight, use as little RAM and battery as possible, and keep running in the background without demanding too much from your device.
+VANTA isn't a vibe-coded project. I've spent a lot of time building, testing, improving, and securing it. Every part has taken real work, and security has been a priority throughout development.
 
-VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing its features, fixing problems, and working on the details. Security has been a major priority throughout development, and I've done my best to make the application as secure as possible.
+If you like VANTA, all I ask is for a GitHub star—it would motivate me to keep building better, free projects.
 
 <div align="center">
   <img
