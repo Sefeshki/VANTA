@@ -4,7 +4,7 @@
 
 **Your phone. Your SIM. Your Telegram.**
 
-An Android app that turns a spare phone into your personal SMS gateway. Incoming messages are forwarded straight to your own Telegram bot.
+An app that turns a spare phone into your personal SMS gateway. Incoming messages are forwarded straight to your own Telegram bot.
 
 <br/>
 
