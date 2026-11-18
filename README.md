@@ -40,7 +40,7 @@ It supports dual-SIM devices, with independent controls for each SIM, and is des
 
 VANTA isn't a vibe-coded project. I've spent a lot of time building, testing, improving, and securing it. Every part has taken real work, and security has been a priority throughout development.
 
-If you like VANTA, all I ask is for a GitHub star—it would motivate me to keep building better, free projects.
+If you like VANTA, all I ask is for a GitHub star—it would motivate me to keep building better, free projects.🤟❤️
 
 ---
 
