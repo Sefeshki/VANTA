@@ -1,4 +1,4 @@
- <div align="center">
+<div align="center">
 
 <img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
@@ -23,6 +23,15 @@ An Android app that turns a spare phone into your personal SMS gateway. Incoming
 
 ### What is VANTA?
 
+<div align="center">
+  <img
+    src="public/assets/images/vanta-showcase.png"
+    alt="VANTA App Showcase"
+    width="100%"
+    style="border-radius: 18px;"
+  />
+</div>
+
 Got an old Android phone? Give it a job.
 
 VANTA turns it into your personal SMS gateway. It runs directly on your phone, forwarding incoming messages to your own Telegram bot without a separate server or third-party service.
@@ -32,15 +41,6 @@ It supports dual-SIM devices, with independent controls for each SIM, and is des
 VANTA isn't a vibe-coded project. I've spent a lot of time building, testing, improving, and securing it. Every part has taken real work, and security has been a priority throughout development.
 
 If you like VANTA, all I ask is for a GitHub star—it would motivate me to keep building better, free projects.
-
-<div align="center">
-  <img
-    src="public/assets/images/vanta-showcase.png"
-    alt="VANTA App Showcase"
-    width="100%"
-    style="border-radius: 18px;"
-  />
-</div>
 
 ---
 
@@ -73,8 +73,6 @@ When a connection drops, VANTA attempts to restore it automatically.
 
 ### Security
 
-I've spent a lot of time working on VANTA's security. Since the app handles personal messages and Telegram bot credentials, this was never something I wanted to overlook.
-
 <div align="center">
   <img
     src="public/assets/images/security_and_technology.png"
@@ -83,6 +81,8 @@ I've spent a lot of time working on VANTA's security. Since the app handles pers
     style="border-radius: 18px;"
   />
 </div>
+
+I've spent a lot of time working on VANTA's security. Since the app handles personal messages and Telegram bot credentials, this was never something I wanted to overlook.
 
 ---
 
