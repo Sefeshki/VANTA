@@ -1,23 +1,24 @@
-&#x20;\<div align="center">
 
-\<img src="[https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1](https://capsule-render.vercel.app/api?type=venom\&height=230\&color=0:000000,50:101010,100:000000\&text=VANTA\&fontColor=ffffff\&fontSize=85\&fontAlignY=45\&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM\&descAlignY=68\&descSize=16\&animation=fadeIn\&stroke=ffffff\&strokeWidth=1)" width="100%" />
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=venom&height=230&color=0:000000,50:101010,100:000000&text=VANTA&fontColor=ffffff&fontSize=85&fontAlignY=45&desc=SMS%20BRIDGE%20%E2%80%A2%20ANDROID%20%E2%80%A2%20TELEGRAM&descAlignY=68&descSize=16&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%" />
 
 **Your phone. Your SIM. Your Telegram.**
 
 An Android app that turns a spare phone into your personal SMS gateway. Incoming messages are forwarded straight to your own Telegram bot.
 
-\<br/>
+<br/>
 
-\<a href="[https://github.com/Sefeshki/VANTA/releases](https://github.com/Sefeshki/VANTA/releases)">\<img src="[https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=ffffff&label=RELEASE&labelColor=000000](https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge\&color=ffffff\&label=RELEASE\&labelColor=000000)" />\</a>
-\<a href="[https://github.com/Sefeshki/VANTA](https://github.com/Sefeshki/VANTA)">\<img src="[https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=ffffff&labelColor=000000](https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge\&color=ffffff\&labelColor=000000)" />\</a>
-\<a href="LICENSE">\<img src="[https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge&labelColor=000000](https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge\&labelColor=000000)" />\</a>
-\<img src="[https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge&labelColor=000000](https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge\&labelColor=000000)" />
+<a href="https://github.com/Sefeshki/VANTA/releases"><img src="https://img.shields.io/github/v/release/Sefeshki/VANTA?style=for-the-badge&color=ffffff&label=RELEASE&labelColor=000000" /></a>
+<a href="https://github.com/Sefeshki/VANTA"><img src="https://img.shields.io/github/stars/Sefeshki/VANTA?style=for-the-badge&color=ffffff&labelColor=000000" /></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/LICENSE-PolyForm_Noncommercial-ffffff?style=for-the-badge&labelColor=000000" /></a>
+<img src="https://img.shields.io/badge/PLATFORM-ANDROID-ffffff?style=for-the-badge&labelColor=000000" />
 
-\<br/>\<br/>
+<br/><br/>
 
 [DOWNLOAD](https://github.com/Sefeshki/VANTA/releases/latest) · [SOURCE CODE](https://github.com/Sefeshki/VANTA) · [DEVELOPER](https://github.com/Sefeshki)
 
-\</div>
+</div>
 
 ---
 
@@ -33,15 +34,17 @@ I've also put a lot of work into making VANTA run well on older and newer Androi
 
 VANTA isn't a vibe-coded project. I've spent a lot of time building it, testing its features, fixing problems, and working on the details. Security has been a major priority throughout development, and I've done my best to make the application as secure as possible.
 
-\<div align="center">   \<img     src="public/assets/images/vanta-showcase.png"     alt="VANTA App Showcase"     width="100%"   /> \</div>
+<div align="center">
+  <img src="public/assets/images/vanta-showcase.png" alt="VANTA App Showcase" width="100%" />
+</div>
 
 ---
 
 ### Features
 
-\<p align="center">
-&#x20; \<img src="public/assets/images/VANTA_FEATURES_INFOGRAPHIC_3to1.png" width="100%" alt="VANTA Features Infographic" />
-\</p>
+<p align="center">
+  <img src="public/assets/images/VANTA_FEATURES_INFOGRAPHIC_3to1.png" width="100%" alt="VANTA Features Infographic" />
+</p>
 
 When you receive an SMS, you can reply to it or forward it directly from Telegram. You can also start a completely new SMS conversation from the bot by entering a recipient number and choosing which SIM to use when needed.
 
@@ -63,15 +66,17 @@ When a connection drops, VANTA attempts to restore it automatically.
 
 I've spent a lot of time working on VANTA's security. Since the app handles personal messages and Telegram bot credentials, this was never something I wanted to overlook.
 
-\<p align="center">
-&#x20; \<img src="public/assets/images/security_and_technology.png" width="100%" alt="VANTA Security and Technology" />
-\</p>
+<p align="center">
+  <img src="public/assets/images/security_and_technology.png" width="100%" alt="VANTA Security and Technology" />
+</p>
 
 ---
 
 ### Getting started
 
-\<p align="center">   \<img src="public/assets/images/getting-started.png" width="100%" alt="VANTA Setup Guide" /> \</p>
+<p align="center">
+  <img src="public/assets/images/getting-started.png" width="100%" alt="VANTA Setup Guide" />
+</p>
 
 **1. Create your bot**
 
@@ -117,16 +122,16 @@ Found a bug, ran into a problem, or have a suggestion? Feel free to open an issu
 
 ---
 
-\<div align="center">
+<div align="center">
 
-\<img src="[https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn](https://capsule-render.vercel.app/api?type=waving\&height=100\&section=footer\&color=0:000000,50:101010,100:000000\&text=BEYOND%20THE%20ORDINARY.\&fontColor=ffffff\&fontSize=25\&fontAlignY=50\&animation=fadeIn)" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=waving&height=100&section=footer&color=0:000000,50:101010,100:000000&text=BEYOND%20THE%20ORDINARY.&fontColor=ffffff&fontSize=25&fontAlignY=50&animation=fadeIn" width="100%" />
 
 Made by [Sefeshki](https://github.com/Sefeshki)
 
 [GitHub](https://github.com/Sefeshki/VANTA) · [Releases](https://github.com/Sefeshki/VANTA/releases)
 
-\<sub>VANTA — Your device. Your connection. Your control.\</sub>
+<sub>VANTA — Your device. Your connection. Your control.</sub>
 
-\<sub>I put a lot of time and interest into building VANTA, and if you like what I've made, a \<a href="[https://github.com/Sefeshki/VANTA](https://github.com/Sefeshki/VANTA)">GitHub star\</a> would mean a lot and give me more motivation to keep creating.\</sub>
+<sub>I put a lot of time and interest into building VANTA, and if you like what I've made, a <a href="https://github.com/Sefeshki/VANTA">GitHub star</a> would mean a lot and give me more motivation to keep creating.</sub>
 
-\</div>
+</div>
